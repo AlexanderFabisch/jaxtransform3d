@@ -8,6 +8,7 @@ from numpy.testing import assert_array_almost_equal
 import jaxtransform3d.rotations as jr
 
 compose_quaternions = jax.jit(jr.compose_quaternions)
+quaternion_conjugate = jax.jit(jr.quaternion_conjugate)
 quaternion_from_compact_axis_angle = jax.jit(jr.quaternion_from_compact_axis_angle)
 compact_axis_angle_from_quaternion = jax.jit(jr.compact_axis_angle_from_quaternion)
 
@@ -25,7 +26,7 @@ def test_batch_concatenate_q_conj():
     rng = np.random.default_rng(231)
     Q = np.array([pr.random_quaternion(rng) for _ in range(10)]).reshape(2, 5, 4)
 
-    Q_conj = pbr.batch_q_conj(Q)
+    Q_conj = quaternion_conjugate(Q)
     Q_Q_conj = compose_quaternions(Q, Q_conj)
 
     assert_array_almost_equal(Q_Q_conj.reshape(-1, 4), np.array([[1, 0, 0, 0]] * 10))

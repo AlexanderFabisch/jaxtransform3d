@@ -57,6 +57,37 @@ def compose_quaternions(q1: ArrayLike, q2: ArrayLike) -> jax.Array:
     return jnp.concatenate((real[..., jnp.newaxis], vec), axis=-1)
 
 
+def quaternion_conjugate(q: ArrayLike) -> jax.Array:
+    r"""Conjugate of quaternion.
+
+    The conjugate of a unit quaternion inverts the rotation represented by
+    this unit quaternion.
+
+    The conjugate of a quaternion :math:`\boldsymbol{q}` is often denoted as
+    :math:`\boldsymbol{q}^*`. For a quaternion :math:`\boldsymbol{q} = w
+    + x \boldsymbol{i} + y \boldsymbol{j} + z \boldsymbol{k}` it is defined as
+
+    .. math::
+
+        \boldsymbol{q}^* = w - x \boldsymbol{i} - y \boldsymbol{j}
+        - z \boldsymbol{k}.
+
+    Parameters
+    ----------
+    q : array-like, shape (..., 4)
+        Unit quaternion to represent rotation: (w, x, y, z).
+
+    Returns
+    -------
+    q_c : array-like, shape (..., 4)
+        Conjugate (w, -x, -y, -z).
+    """
+    q = jnp.asarray(q)
+    if not jnp.issubdtype(q.dtype, jnp.floating):
+        q = q.astype(jnp.float64)
+    return jnp.concatenate((q[..., 0, jnp.newaxis], -q[..., 1:]), axis=-1)
+
+
 def compact_axis_angle_from_quaternion(q: ArrayLike) -> jax.Array:
     """Compute axis-angle from quaternion.
 
