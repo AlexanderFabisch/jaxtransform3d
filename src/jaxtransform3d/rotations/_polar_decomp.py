@@ -119,6 +119,8 @@ def robust_polar_decomposition(
     A = jnp.asarray(A)
 
     chex.assert_shape(A, (3, 3))
+    chex.assert_type(n_iter, expected_types=int)
+    chex.assert_scalar_positive(eps)
 
     current_R = jnp.eye(3)
 
