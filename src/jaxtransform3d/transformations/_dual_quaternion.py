@@ -42,19 +42,17 @@ def norm_dual_quaternion(dual_quat):
     real = dual_quat[..., :4]
     dual = dual_quat[..., 4:]
 
-    prod = compose_dual_quaternions(
+    squared_norm = compose_dual_quaternions(
         dual_quat, dual_quaternion_quaternion_conjugate(dual_quat)
     )
-    prod_real = prod[..., 0]  # vector part is 0
-    prod_dual = prod[..., 4]
+    s = squared_norm[..., 0]
+    t = squared_norm[..., 4]
 
-    prod_real_norm = jnp.sqrt(prod_real)[..., jnp.newaxis]
+    u = 1.0 / jnp.sqrt(s)[..., jnp.newaxis]
+    v = -0.5 * t[..., jnp.newaxis] * u**3
 
-    real_inv_sqrt = 1.0 / prod_real_norm
-    dual_inv_sqrt = -0.5 * prod_dual[..., jnp.newaxis] * real_inv_sqrt**3
-
-    real_norm = real_inv_sqrt * real
-    dual_norm = real_inv_sqrt * dual + dual_inv_sqrt * real
+    real_norm = u * real
+    dual_norm = u * dual + v * real
 
     return jnp.concatenate((real_norm, dual_norm), axis=-1)
 
