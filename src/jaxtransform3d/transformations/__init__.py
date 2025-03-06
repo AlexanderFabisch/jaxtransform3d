@@ -1,6 +1,7 @@
 """Proper rigid transformations in 3D."""
 
 from ._dual_quaternion import (
+    apply_dual_quaternion,
     compose_dual_quaternions,
     dual_quaternion_quaternion_conjugate,
     exponential_coordinates_from_dual_quaternion,
@@ -27,5 +28,6 @@ __all__ = [
     "dual_quaternion_from_exponential_coordinates",
     "compose_dual_quaternions",
     "dual_quaternion_quaternion_conjugate",
+    "apply_dual_quaternion",
     "exponential_coordinates_from_dual_quaternion",
 ]

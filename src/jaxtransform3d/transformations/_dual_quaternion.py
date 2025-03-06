@@ -75,6 +75,74 @@ def dual_quaternion_quaternion_conjugate(dual_quat: ArrayLike) -> jax.Array:
     return jnp.concatenate((real, dual), axis=-1)
 
 
+def apply_dual_quaternion(dual_quat: ArrayLike, v: ArrayLike) -> jax.Array:
+    r"""Apply transform represented by a dual quaternion to a vector.
+
+    To apply the transformation defined by a unit dual quaternion
+    :math:`\boldsymbol{q}` to a point :math:`\boldsymbol{v} \in \mathbb{R}^3`,
+    we first represent the vector as a dual quaternion: we set the real part to
+    (1, 0, 0, 0) and the dual part is a pure quaternion with the scalar part
+    0 and the vector as its vector part
+    :math:`\left(\begin{array}{c}0\\\boldsymbol{v}\end{array}\right) \in
+    \mathbb{R}^4`. Then we left-multiply the dual quaternion and right-multiply
+    its dual quaternion conjugate
+
+    .. math::
+
+        \left(\begin{array}{c}1\\0\\0\\0\\0\\\boldsymbol{w}\end{array}\right)
+        =
+        \boldsymbol{q}
+        \cdot
+        \left(\begin{array}{c}1\\0\\0\\0\\0\\\boldsymbol{v}\end{array}\right)
+        \cdot
+        \boldsymbol{q}^*.
+
+    The vector part of the dual part :math:`\boldsymbol{w}` of the resulting
+    quaternion is the rotated point.
+
+    Parameters
+    ----------
+    dual_quat : array-like, shape (..., 8)
+        Unit dual quaternion to represent transform:
+        (pw, px, py, pz, qw, qx, qy, qz)
+
+    v : array-like, shape (..., 3)
+        3d vector
+
+    Returns
+    -------
+    w : array, shape (..., 3)
+        3d vector
+    """
+    dual_quat = jnp.asarray(dual_quat)
+    v = jnp.asarray(v)
+
+    chex.assert_axis_dimension(dual_quat, axis=-1, expected=8)
+    chex.assert_axis_dimension(v, axis=-1, expected=3)
+    chex.assert_equal_shape_prefix((dual_quat, v), prefix_len=v.ndim - 1)
+
+    pure_dual_quat = jnp.concatenate(
+        (
+            jnp.ones(v.shape[:-1] + (1,)),
+            jnp.zeros(v.shape[:-1] + (4,)),
+            v,
+        ),
+        axis=-1,
+    )
+    dual_quat_conj = jnp.concatenate(
+        (
+            dual_quat[..., 0, jnp.newaxis],
+            -dual_quat[..., 1:5],
+            dual_quat[..., 5:],
+        ),
+        axis=-1,
+    )
+    transformed_pure_dual_quat = compose_dual_quaternions(
+        dual_quat, compose_dual_quaternions(pure_dual_quat, dual_quat_conj)
+    )
+    return transformed_pure_dual_quat[..., 5:]
+
+
 def exponential_coordinates_from_dual_quaternion(dual_quat: ArrayLike) -> jax.Array:
     """Compute dual quaternion from exponential coordinates.
 
