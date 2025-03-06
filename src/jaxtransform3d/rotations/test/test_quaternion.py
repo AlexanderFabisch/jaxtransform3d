@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pytest
 import pytransform3d.batch_rotations as pbr
 import pytransform3d.rotations as pr
 from numpy.testing import assert_array_almost_equal
@@ -12,6 +13,21 @@ quaternion_conjugate = jax.jit(jr.quaternion_conjugate)
 apply_quaternion = jax.jit(jr.apply_quaternion)
 quaternion_from_compact_axis_angle = jax.jit(jr.quaternion_from_compact_axis_angle)
 compact_axis_angle_from_quaternion = jax.jit(jr.compact_axis_angle_from_quaternion)
+
+
+def test_norm_quaternion():
+    rng = np.random.default_rng(0)
+    q = rng.normal(size=4)
+    q_norm = jr.norm_quaternion(q)
+    assert pytest.approx(np.linalg.norm(q_norm)) == 1.0
+
+    q = rng.normal(size=(20, 4))
+    q_norm = jr.norm_quaternion(q)
+    assert_array_almost_equal(jnp.linalg.norm(q_norm, axis=-1), jnp.ones(20))
+
+    q = rng.normal(size=(5, 4, 4))
+    q_norm = jr.norm_quaternion(q)
+    assert_array_almost_equal(jnp.linalg.norm(q_norm, axis=-1), jnp.ones((5, 4)))
 
 
 def test_batch_concatenate_quaternions_0dim():

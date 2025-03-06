@@ -15,6 +15,7 @@ from ._quaternion import (
     apply_quaternion,
     compact_axis_angle_from_quaternion,
     compose_quaternions,
+    norm_quaternion,
     quaternion_conjugate,
 )
 
@@ -25,6 +26,7 @@ __all__ = [
     "apply_matrix",
     "compose_matrices",
     "compact_axis_angle_from_matrix",
+    "norm_quaternion",
     "compose_quaternions",
     "quaternion_conjugate",
     "apply_quaternion",

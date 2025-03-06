@@ -6,6 +6,28 @@ from jax.typing import ArrayLike
 from ..utils import norm_angle, norm_vector
 
 
+def norm_quaternion(q: ArrayLike) -> jax.Array:
+    r"""Normalize quaternion to unit norm.
+
+    Parameters
+    ----------
+    q : array-like, shape (..., 4)
+        Quaternion to normalize.
+
+    Returns
+    -------
+    q_norm : array-like, shape (..., 4)
+        Normalized quaternion.
+    """
+    q = jnp.asarray(q)
+    if not jnp.issubdtype(q.dtype, jnp.floating):
+        q = q.astype(jnp.float64)
+
+    chex.assert_axis_dimension(q, axis=-1, expected=4)
+
+    return norm_vector(q)
+
+
 def compose_quaternions(q1: ArrayLike, q2: ArrayLike) -> jax.Array:
     r"""Compose two quaternions.
 
