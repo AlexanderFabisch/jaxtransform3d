@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pytest
 import pytransform3d.trajectories as ptr
 import pytransform3d.transformations as pt
 from numpy.testing import assert_array_almost_equal
@@ -12,6 +13,54 @@ exponential_coordinates_from_dual_quaternion = jax.jit(
     jt.exponential_coordinates_from_dual_quaternion
 )
 apply_dual_quaternion = jax.jit(jt.apply_dual_quaternion)
+norm_dual_quaternion = jax.jit(jt.norm_dual_quaternion)
+
+
+def test_norm_dual_quaternion():
+    rng = np.random.default_rng(83)
+    for _ in range(20):
+        dual_quat = rng.normal(size=8)
+        dual_quat_norm = jt.norm_dual_quaternion(dual_quat)
+        norm = jt.dual_quaternion_norm(dual_quat_norm)
+        assert pytest.approx(norm[0], abs=1e-6) == 1.0
+        assert pytest.approx(norm[1], abs=1e-6) == 0.0
+
+    dual_quat = rng.normal(size=(20, 8))
+    dual_quat_norm = jt.norm_dual_quaternion(dual_quat)
+    norm = jt.dual_quaternion_norm(dual_quat_norm)
+    assert_array_almost_equal(norm[..., 0], 1.0)
+    assert_array_almost_equal(norm[..., 1], 0.0)
+
+    dual_quat = rng.normal(size=(5, 4, 8))
+    dual_quat_norm = jt.norm_dual_quaternion(dual_quat)
+    norm = jt.dual_quaternion_norm(dual_quat_norm)
+    assert_array_almost_equal(norm[..., 0], 1.0)
+    assert_array_almost_equal(norm[..., 1], 0.0)
+
+
+def test_dual_quaternion_norm():
+    rng = np.random.default_rng(232)
+    exp_coords = rng.normal(size=(20, 6))
+    dual_quat = jt.dual_quaternion_from_exponential_coordinates(exp_coords)
+    norm = jt.dual_quaternion_norm(dual_quat)
+    assert_array_almost_equal(norm[..., 0], 1.0)
+    assert_array_almost_equal(norm[..., 1], 0.0)
+
+
+def test_compose_dual_quaternions():
+    rng = np.random.default_rng(232)
+    exp_coords = rng.normal(size=(20, 6))
+    dual_quat = jt.dual_quaternion_from_exponential_coordinates(exp_coords)
+    dual_quat_conj = jt.dual_quaternion_quaternion_conjugate(dual_quat)
+    prod = jt.compose_dual_quaternions(dual_quat, dual_quat_conj)
+    assert_array_almost_equal(jt.exponential_coordinates_from_dual_quaternion(prod), 0)
+
+    exp_coords2 = rng.normal(size=(20, 6))
+    dual_quat2 = jt.dual_quaternion_from_exponential_coordinates(exp_coords2)
+    prod2 = jt.compose_dual_quaternions(dual_quat, dual_quat2)
+    assert_array_almost_equal(
+        prod2, ptr.batch_concatenate_dual_quaternions(dual_quat, dual_quat2)
+    )
 
 
 def test_apply_dual_quaternion():

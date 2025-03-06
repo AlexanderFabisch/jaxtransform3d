@@ -12,6 +12,82 @@ from ..utils import norm_vector
 from ._transform import _v
 
 
+def norm_dual_quaternion(dual_quat):
+    """Normalize unit dual quaternion.
+
+    A unit dual quaternion has a real quaternion with unit norm and an
+    orthogonal real part. Both properties are enforced by multiplying a
+    normalization factor [1]_. This is not always necessary. It is often
+    sufficient to only enforce the unit norm property of the real quaternion.
+    This can also be done with :func:`check_dual_quaternion`.
+
+    Parameters
+    ----------
+    dual_quat : array-like, shape (..., 8)
+        Dual quaternion to represent transform:
+        (pw, px, py, pz, qw, qx, qy, qz)
+
+    Returns
+    -------
+    dual_quat_norm : array, shape (..., 8)
+        Unit dual quaternion to represent transform with orthogonal real and
+        dual quaternion.
+
+    References
+    ----------
+    .. [1] enki (2023). Properly normalizing a dual quaternion.
+       https://stackoverflow.com/a/76313524
+    """
+    dual_quat = jnp.asarray(dual_quat)
+    real = dual_quat[..., :4]
+    dual = dual_quat[..., 4:]
+
+    prod = compose_dual_quaternions(
+        dual_quat, dual_quaternion_quaternion_conjugate(dual_quat)
+    )
+    prod_real = prod[..., :4]
+    prod_dual = prod[..., 4:]
+
+    prod_real_norm = jnp.sqrt(jnp.sum(prod_real, axis=-1)[..., jnp.newaxis])
+
+    real_inv_sqrt = 1.0 / prod_real_norm
+    dual_inv_sqrt = -0.5 * prod_dual * real_inv_sqrt**3
+
+    real_norm = real_inv_sqrt * real
+    dual_norm = real_inv_sqrt * dual + compose_quaternions(dual_inv_sqrt, real)
+
+    return jnp.concatenate((real_norm, dual_norm), axis=-1)
+
+
+def dual_quaternion_norm(dual_quat: ArrayLike) -> jax.Array:
+    """Compute norm of dual quaternion.
+
+    Parameters
+    ----------
+    dual_quat : array-like, shape (..., 8)
+        Dual quaternion to represent transform:
+        (pw, px, py, pz, qw, qx, qy, qz)
+
+    Returns
+    -------
+    norm : array, shape (..., 2)
+        Norm of dual quaternion, which is a dual number with a real and a dual
+        part.
+    """
+    dual_quat = jnp.asarray(dual_quat)
+
+    chex.assert_axis_dimension(dual_quat, axis=-1, expected=8)
+
+    prod = compose_dual_quaternions(
+        dual_quat, dual_quaternion_quaternion_conjugate(dual_quat)
+    )
+
+    real = jnp.sum(prod[..., :4], axis=-1)[..., jnp.newaxis]
+    dual = jnp.sum(prod[..., 4:], axis=-1)[..., jnp.newaxis]
+
+    return jnp.concatenate((real, dual), axis=-1)
+
+
 def compose_dual_quaternions(dual_quat1: ArrayLike, dual_quat2: ArrayLike) -> jax.Array:
     """Concatenate dual quaternions.
 
