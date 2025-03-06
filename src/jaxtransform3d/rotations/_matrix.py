@@ -46,12 +46,11 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     if not jnp.issubdtype(v.dtype, jnp.floating):
         v = v.astype(jnp.float64)
 
-    chex.assert_equal_shape_prefix((R, v), prefix_len=R.ndim - 1)
+    chex.assert_axis_dimension(v, axis=-1, expected=3)
+    chex.assert_axis_dimension(R, axis=-2, expected=3)
     chex.assert_axis_dimension(R, axis=-1, expected=3)
 
-    return jnp.einsum("nij,nj->ni", R.reshape(-1, 3, 3), v.reshape(-1, 3)).reshape(
-        *v.shape
-    )
+    return (R.reshape(-1, 3, 3) @ v.reshape(-1, 3, 1)).reshape(*v.shape)
 
 
 def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:

@@ -35,15 +35,15 @@ def apply_transform(T: ArrayLike, v: ArrayLike) -> jax.Array:
 
     Parameters
     ----------
-    T : array-like, shape (..., 4, 4)
+    T : array-like, shape (..., 4, 4) or (4, 4)
         Transformation matrix.
 
-    v : array-like, shape (..., 3)
+    v : array-like, shape (..., 3) or (3,)
         3d vector.
 
     Returns
     -------
-    w : array, shape (..., 3)
+    w : array, shape (..., 3) or (3,)
         3d vector.
     """
     T = jnp.asarray(T)
@@ -53,7 +53,6 @@ def apply_transform(T: ArrayLike, v: ArrayLike) -> jax.Array:
     if not jnp.issubdtype(v.dtype, jnp.floating):
         v = v.astype(jnp.float64)
 
-    chex.assert_equal_shape_prefix((T, v), prefix_len=T.ndim - 2)
     chex.assert_axis_dimension(T, axis=-2, expected=4)
     chex.assert_axis_dimension(T, axis=-1, expected=4)
     chex.assert_axis_dimension(v, axis=-1, expected=3)

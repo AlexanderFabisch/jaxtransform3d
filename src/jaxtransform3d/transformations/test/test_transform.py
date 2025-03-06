@@ -32,6 +32,24 @@ def test_create_transform():
     assert_array_almost_equal(T, jnp.stack([T1, T2]))
 
 
+def test_apply_transform():
+    rng = np.random.default_rng(843)
+    exp_coords = rng.normal(size=(20, 6))
+    T = jt.transform_from_exponential_coordinates(exp_coords)
+    v = jnp.asarray(rng.normal(size=(20, 3)))
+
+    w = jt.apply_transform(T, v)
+    w00 = jt.apply_transform(T[0], v[0])
+    w11 = jt.apply_transform(T[1], v[1])
+    assert_array_almost_equal(w[0], w00)
+    assert_array_almost_equal(w[1], w11)
+
+    w01 = jt.apply_transform(T[0], v[1])
+    w0 = jt.apply_transform(T[0], v)
+    assert_array_almost_equal(w0[0], w00)
+    assert_array_almost_equal(w0[1], w01)
+
+
 def test_exponential_coordinates_from_transform_0dim():
     T1 = jnp.eye(4)
     exp_coords1 = exponential_coordinates_from_transform(T1)
