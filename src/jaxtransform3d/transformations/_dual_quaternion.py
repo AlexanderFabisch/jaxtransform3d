@@ -39,6 +39,9 @@ def norm_dual_quaternion(dual_quat):
        https://stackoverflow.com/a/76313524
     """
     dual_quat = jnp.asarray(dual_quat)
+
+    chex.assert_axis_dimension(dual_quat, axis=-1, expected=8)
+
     real = dual_quat[..., :4]
     dual = dual_quat[..., 4:]
 
@@ -144,6 +147,10 @@ def dual_quaternion_quaternion_conjugate(dual_quat: ArrayLike) -> jax.Array:
     dual_quat2 : array, shape (..., 8)
         Conjugate of dual quaternion: (pw, -px, -py, -pz, qw, -qx, -qy, -qz)
     """
+    dual_quat = jnp.asarray(dual_quat)
+
+    chex.assert_axis_dimension(dual_quat, axis=-1, expected=8)
+
     real = quaternion_conjugate(dual_quat[..., :4])
     dual = quaternion_conjugate(dual_quat[..., 4:])
     return jnp.concatenate((real, dual), axis=-1)
