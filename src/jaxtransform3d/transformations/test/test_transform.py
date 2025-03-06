@@ -59,7 +59,7 @@ def test_exponential_coordinates_from_transform_0dim():
 
 def test_exponential_coordinates_from_transform_2dim():
     rng = np.random.default_rng(84)
-    T = ptr.random_trajectories(rng, n_trajectories=1, n_steps=3)
+    T = ptr.random_trajectories(rng, n_trajectories=3, n_steps=5)
     exp_coords = exponential_coordinates_from_transform(T)
     assert_array_almost_equal(
         exp_coords, ptr.exponential_coordinates_from_transforms(T), decimal=5

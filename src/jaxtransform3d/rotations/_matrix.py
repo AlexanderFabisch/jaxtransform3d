@@ -4,6 +4,25 @@ import jax.numpy as jnp
 from jax.typing import ArrayLike
 
 
+def matrix_inverse(R: ArrayLike) -> jax.Array:
+    """Invert rotation matrix.
+
+    Parameters
+    ----------
+    R : array-like, shape (..., 3, 3)
+        Rotation matrix.
+
+    Returns
+    -------
+    R_inv : array, shape (..., 3, 3)
+        Inverted rotation matrix.
+    """
+    R = jnp.asarray(R)
+    if not jnp.issubdtype(R.dtype, jnp.floating):
+        R = R.astype(jnp.float64)
+    return jnp.swapaxes(R, -1, -2)
+
+
 def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     """Apply rotation matrix to vector.
 
@@ -33,6 +52,29 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     return jnp.einsum("nij,nj->ni", R.reshape(-1, 3, 3), v.reshape(-1, 3)).reshape(
         *v.shape
     )
+
+
+def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
+    """Compose rotation matrices.
+
+    Parameters
+    ----------
+    R1 : array-like, shape (..., 3, 3)
+        Rotation matrix.
+
+    R2 : array-like, shape (..., 3, 3)
+        Rotation matrix.
+
+    Returns
+    -------
+    R1_R2 : array, shape (..., 3, 3)
+        Composed rotation matrix.
+    """
+    R1 = jnp.asarray(R1)
+    R2 = jnp.asarray(R2)
+    return jnp.einsum(
+        "nij,njk->nik", R1.reshape(-1, 3, 3), R2.reshape(-1, 3, 3)
+    ).reshape(*R1.shape)
 
 
 def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:

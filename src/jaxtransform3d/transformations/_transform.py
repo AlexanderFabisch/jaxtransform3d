@@ -3,8 +3,85 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..rotations import compact_axis_angle_from_matrix
+from ..rotations import apply_matrix, compact_axis_angle_from_matrix, matrix_inverse
 from ..utils import norm_vector
+
+
+def transform_inverse(T: ArrayLike) -> jax.Array:
+    """Invert transformation matrix.
+
+    Parameters
+    ----------
+    T : array-like, shape (..., 4, 4)
+        Transformation matrix.
+
+    Returns
+    -------
+    T_inv : array, shape (..., 4, 4)
+        Inverted transformation matrix.
+    """
+    T = jnp.asarray(T)
+    R = T[..., :3, :3]
+    t = T[..., :3, 3]
+
+    R_inv = matrix_inverse(R)
+    t_inv = -apply_matrix(R_inv, t)
+
+    return create_transform(R_inv, t_inv)
+
+
+def apply_transform(T: ArrayLike, v: ArrayLike) -> jax.Array:
+    """Apply transformation matrix to vector.
+
+    Parameters
+    ----------
+    T : array-like, shape (..., 4, 4)
+        Transformation matrix.
+
+    v : array-like, shape (..., 3)
+        3d vector.
+
+    Returns
+    -------
+    w : array, shape (..., 3)
+        3d vector.
+    """
+    T = jnp.asarray(T)
+    v = jnp.asarray(v)
+    if not jnp.issubdtype(T.dtype, jnp.floating):
+        T = T.astype(jnp.float64)
+    if not jnp.issubdtype(v.dtype, jnp.floating):
+        v = v.astype(jnp.float64)
+
+    chex.assert_equal_shape_prefix((T, v), prefix_len=T.ndim - 2)
+    chex.assert_axis_dimension(T, axis=-2, expected=4)
+    chex.assert_axis_dimension(T, axis=-1, expected=4)
+    chex.assert_axis_dimension(v, axis=-1, expected=3)
+
+    return apply_matrix(T[..., :3, :3], v) + T[..., :3, 3]
+
+
+def compose_transforms(T1: ArrayLike, T2: ArrayLike) -> jax.Array:
+    """Compose transformation matrices.
+
+    Parameters
+    ----------
+    T1 : array-like, shape (..., 4, 4)
+        Transformation matrix.
+
+    T2 : array-like, shape (..., 4, 4)
+        Transformation matrix.
+
+    Returns
+    -------
+    T1_T2 : array, shape (..., 4, 4)
+        Composed transformation matrix.
+    """
+    T1 = jnp.asarray(T1)
+    T2 = jnp.asarray(T2)
+    return jnp.einsum(
+        "nij,njk->nik", T1.reshape(-1, 4, 4), T2.reshape(-1, 4, 4)
+    ).reshape(*T1.shape)
 
 
 def create_transform(R: ArrayLike, t: ArrayLike) -> jax.Array:
@@ -73,9 +150,15 @@ def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
     t = T[..., :3, 3]
 
     axis_angle = compact_axis_angle_from_matrix(R)
+
     angle = jnp.linalg.norm(axis_angle, axis=-1)
     axis = norm_vector(axis_angle, norm=angle)
+    v = _v(axis, angle, t)
 
+    return jnp.concatenate((axis_angle, v), axis=-1)
+
+
+def _v(axis: jax.Array, angle: jax.Array, t: jax.Array) -> jax.Array:
     ti = jnp.where(angle != 0.0, 1.0 / angle, 0.0)
     tan_term = -0.5 / jnp.tan(angle / 2.0) + ti
     o0 = axis[..., 0]
@@ -90,7 +173,6 @@ def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
     o11 = o1 * o1
     o12 = o1 * o2
     o22 = o2 * o2
-
     v = (
         jnp.stack(
             (
@@ -109,7 +191,4 @@ def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
         * angle[..., jnp.newaxis]
     )
     v = jnp.where((angle != 0.0)[..., jnp.newaxis], v, t)
-
-    exp_coords = jnp.concatenate((axis_angle, v), axis=-1)
-
-    return exp_coords
+    return v
