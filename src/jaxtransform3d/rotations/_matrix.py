@@ -28,15 +28,15 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
 
     Parameters
     ----------
-    R : array-like, shape (..., 3, 3)
+    R : array-like, shape (..., 3, 3) or (3, 3)
         Rotation matrix.
 
-    v : array-like, shape (..., 3)
+    v : array-like, shape (..., 3) or (3,)
         3d vector.
 
     Returns
     -------
-    w : array, shape (..., 3)
+    w : array, shape (..., 3) or (3,)
         3d vector.
     """
     R = jnp.asarray(R)
