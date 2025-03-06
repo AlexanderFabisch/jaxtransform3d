@@ -70,12 +70,18 @@ interpolated_poses_from_dqs = ptr.transforms_from_dual_quaternions(interpolated_
 # implemented with the dual quaternion power. The dual quaternion power
 # uses the screw parameters of the pose difference to smoothly interpolate
 # along the screw axis.
-# pose12pose2 = jt.compose_dual_quaternions(jt.dual_quaternion_conjugate(dual_quat1), dual_quat2)
-# exp_coords = pt.exponential_coordinates_from_transform(pose12pose2)
-# offsets = ptr.transforms_from_exponential_coordinates(
-#    exp_coords[np.newaxis] * np.linspace(0, 1, n_steps)[:, np.newaxis]
-# )
-# interpolated_poses_dq_slerp = ptr.transforms_from_dual_quaternions(jt.compose_dual_quaternions(pose1, offsets))
+pose12pose2 = jt.compose_dual_quaternions(
+    jt.dual_quaternion_quaternion_conjugate(dual_quat1), dual_quat2
+)
+exp_coords = jt.exponential_coordinates_from_dual_quaternion(pose12pose2)
+offsets = jt.dual_quaternion_from_exponential_coordinates(
+    exp_coords[np.newaxis] * np.linspace(0, 1, n_steps)[:, np.newaxis]
+)
+interpolated_poses_dq_slerp = ptr.transforms_from_dual_quaternions(
+    jt.compose_dual_quaternions(
+        np.array([np.asarray(dual_quat1) for _ in range(len(offsets))]), offsets
+    )
+)
 
 # %%
 # Approximation: Linear Interpolation of Exponential Coordinates
@@ -108,22 +114,22 @@ traj_from_ecs = ppu.Trajectory(
     interpolates_poses_from_ecs, s=0.1, c="r", show_direction=False
 )
 traj_from_ecs.add_trajectory(ax)
-# traj_from_dqs_sclerp = ppu.Trajectory(
-#    interpolated_poses_dq_slerp, s=0.1, c="b", show_direction=False
-# )
-# traj_from_dqs_sclerp.add_trajectory(ax)
+traj_from_dqs_sclerp = ppu.Trajectory(
+    interpolated_poses_dq_slerp, s=0.1, c="b", show_direction=False
+)
+traj_from_dqs_sclerp.add_trajectory(ax)
 plt.legend(
     [
         traj.trajectory,
         traj_from_dqs.trajectory,
         traj_from_ecs.trajectory,
-        # traj_from_dqs_sclerp.trajectory,
+        traj_from_dqs_sclerp.trajectory,
     ],
     [
         "Transformation matrix ScLERP",
         "Linear dual quaternion interpolation",
         "Linear interpolation of exp. coordinates",
-        # "Dual quaternion ScLERP",
+        "Dual quaternion ScLERP",
     ],
     loc="best",
 )
