@@ -23,6 +23,8 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
         constrained to [0, pi].
     """
     R = jnp.asarray(R)
+    if not jnp.issubdtype(R.dtype, jnp.floating):
+        R = R.astype(jnp.float64)
 
     instances_shape = R.shape[:-2]
     R = R.reshape(-1, 3, 3)

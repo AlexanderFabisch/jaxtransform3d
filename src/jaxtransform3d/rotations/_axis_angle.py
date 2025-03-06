@@ -32,6 +32,10 @@ def matrix_from_compact_axis_angle(
     Rs : array, shape (..., 3, 3)
         Rotation matrices
     """
+    axis_angle = jnp.asarray(axis_angle)
+    if not jnp.issubdtype(axis_angle.dtype, jnp.floating):
+        axis_angle = axis_angle.astype(jnp.float64)
+
     if angle is None:
         angle = jnp.linalg.norm(axis_angle, axis=-1)
     else:
@@ -63,3 +67,29 @@ def matrix_from_compact_axis_angle(
     col3 = jnp.stack((ciuxuz + uys, ciuyuz - uxs, ci * uz * uz + c), axis=-1)
 
     return jnp.stack((col1, col2, col3), axis=-1)
+
+
+def quaternion_from_compact_axis_angle(a: ArrayLike) -> jax.Array:
+    """Compute quaternion from axis-angle.
+
+    This operation is called exponential map.
+
+    Parameters
+    ----------
+    a : array-like, shape (3,)
+        Axis of rotation and rotation angle: angle * (x, y, z)
+
+    Returns
+    -------
+    q : array, shape (4,)
+        Unit quaternion to represent rotation: (w, x, y, z)
+    """
+    a = jnp.asarray(a)
+    angle = jnp.linalg.norm(a, axis=-1)
+    axis = norm_vector(a, norm=angle)
+
+    half_angle = 0.5 * angle
+    real = jnp.cos(half_angle)[..., jnp.newaxis]
+    vec = jnp.sin(half_angle)[..., jnp.newaxis] * axis
+
+    return jnp.concatenate((real, vec), axis=-1)
