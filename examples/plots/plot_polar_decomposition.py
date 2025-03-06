@@ -31,12 +31,10 @@ robust_polar_decomposition = jax.jit(
 
 start = time.time()
 gram_schmidt(jnp.eye(3)[jnp.newaxis]).block_until_ready()
-end = time.time()
-print(f"JIT-compiled Gram-Schmidt orthogonalization: {end - start:.5f} s")
+gs_jit_time = time.time() - start
 start = time.time()
 robust_polar_decomposition(jnp.eye(3)[jnp.newaxis]).block_until_ready()
-end = time.time()
-print(f"JIT-compiled robust polar decomposition: {end - start:.5f} s")
+rpd_jit_time = time.time() - start
 
 n_cases = 8
 fig, axes = plt.subplots(3, n_cases, subplot_kw={"projection": "3d"}, figsize=(14, 8))
@@ -67,13 +65,16 @@ for i in range(n_cases):
 
 start = time.time()
 R_gs = gram_schmidt(R_unnormalized)
-end = time.time()
-print(f"Gram-Schmidt orthogonalization: {end - start:.5f} s")
+gs_time = time.time() - start
 
 start = time.time()
 R_rpd = robust_polar_decomposition(R_unnormalized)
-end = time.time()
-print(f"Robost polar decomposition: {end - start:.5f} s")
+rpd_time = time.time() - start
+
+print(f"JIT-compiled Gram-Schmidt orthogonalization: {gs_jit_time:.5f} s")
+print(f"JIT-compiled robust polar decomposition: {rpd_jit_time:.5f} s")
+print(f"Gram-Schmidt orthogonalization: {gs_time:.5f} s")
+print(f"Robost polar decomposition: {rpd_time:.5f} s")
 
 for i in range(n_cases):
     pr.plot_basis(axes[0, i], R_unnormalized[i], p=plot_center, strict_check=False)

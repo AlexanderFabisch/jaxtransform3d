@@ -58,7 +58,8 @@ def matrix_from_compact_axis_angle(
     ciuxuz = ciux * uz
     ciuyuz = ciuy * uz
 
-    row1 = jnp.stack((ciux * ux + c, ciuxuy - uzs, ciuxuz + uys), axis=-1)
-    row2 = jnp.stack((ciuxuy + uzs, ciuy * uy + c, ciuyuz - uxs), axis=-1)
-    row3 = jnp.stack((ciuxuz - uys, ciuyuz + uxs, ci * uz * uz + c), axis=-1)
-    return jnp.stack((row1, row2, row3), axis=-2)
+    col1 = jnp.stack((ciux * ux + c, ciuxuy + uzs, ciuxuz - uys), axis=-1)
+    col2 = jnp.stack((ciuxuy - uzs, ciuy * uy + c, ciuyuz + uxs), axis=-1)
+    col3 = jnp.stack((ciuxuz + uys, ciuyuz - uxs, ci * uz * uz + c), axis=-1)
+
+    return jnp.stack((col1, col2, col3), axis=-1)
