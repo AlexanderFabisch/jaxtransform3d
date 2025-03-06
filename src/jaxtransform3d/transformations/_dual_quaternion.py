@@ -45,23 +45,19 @@ def norm_dual_quaternion(dual_quat):
     real = dual_quat[..., :4]
     dual = dual_quat[..., 4:]
 
-    squared_norm = compose_dual_quaternions(
-        dual_quat, dual_quaternion_quaternion_conjugate(dual_quat)
-    )
-    s = squared_norm[..., 0]
-    t = squared_norm[..., 4]
+    # 1. ensure unit norm of real quaternion
+    real_norm = jnp.linalg.norm(real, axis=-1)[..., jnp.newaxis]
+    real = real / real_norm
+    dual = dual / real_norm
 
-    u = 1.0 / jnp.sqrt(s)[..., jnp.newaxis]
-    v = -0.5 * t[..., jnp.newaxis] * u**3
+    # 2. ensure orthogonality of real and dual quaternion
+    dual = dual - jnp.sum(real * dual, axis=-1)[..., jnp.newaxis] * real
 
-    real_norm = u * real
-    dual_norm = u * dual + v * real
-
-    return jnp.concatenate((real_norm, dual_norm), axis=-1)
+    return jnp.concatenate((real, dual), axis=-1)
 
 
-def dual_quaternion_norm(dual_quat: ArrayLike) -> jax.Array:
-    """Compute norm of dual quaternion.
+def dual_quaternion_squared_norm(dual_quat: ArrayLike) -> jax.Array:
+    """Compute squared norm of dual quaternion.
 
     Parameters
     ----------
@@ -71,9 +67,9 @@ def dual_quaternion_norm(dual_quat: ArrayLike) -> jax.Array:
 
     Returns
     -------
-    norm : array, shape (..., 2)
-        Norm of dual quaternion, which is a dual number with a real and a dual
-        part.
+    squared_norm : array, shape (..., 2)
+        Squared norm of dual quaternion, which is a dual number with a real and
+        a dual part.
     """
     dual_quat = jnp.asarray(dual_quat)
 

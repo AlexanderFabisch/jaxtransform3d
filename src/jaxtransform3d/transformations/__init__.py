@@ -3,8 +3,8 @@
 from ._dual_quaternion import (
     apply_dual_quaternion,
     compose_dual_quaternions,
-    dual_quaternion_norm,
     dual_quaternion_quaternion_conjugate,
+    dual_quaternion_squared_norm,
     exponential_coordinates_from_dual_quaternion,
     norm_dual_quaternion,
 )
@@ -29,7 +29,7 @@ __all__ = [
     "transform_from_exponential_coordinates",
     "dual_quaternion_from_exponential_coordinates",
     "norm_dual_quaternion",
-    "dual_quaternion_norm",
+    "dual_quaternion_squared_norm",
     "compose_dual_quaternions",
     "dual_quaternion_quaternion_conjugate",
     "apply_dual_quaternion",

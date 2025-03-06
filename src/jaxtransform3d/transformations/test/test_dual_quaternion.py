@@ -14,7 +14,7 @@ exponential_coordinates_from_dual_quaternion = jax.jit(
 )
 apply_dual_quaternion = jax.jit(jt.apply_dual_quaternion)
 norm_dual_quaternion = jax.jit(jt.norm_dual_quaternion)
-dual_quaternion_norm = jax.jit(jt.dual_quaternion_norm)
+dual_quaternion_norm = jax.jit(jt.dual_quaternion_squared_norm)
 
 
 def test_norm_dual_quaternion():
