@@ -40,7 +40,7 @@ def test_apply_quaternion_0dim():
         v = rng.normal(size=3)
         q = quaternion_from_compact_axis_angle(a)
         R = jr.matrix_from_compact_axis_angle(a)
-        vR = R @ v
+        vR = jr.apply_matrix(R, v)
         vq = jr.apply_quaternion(q, v)
         assert_array_almost_equal(vR, vq)
 
@@ -51,7 +51,7 @@ def test_apply_quaternion_1dim():
     v = rng.normal(size=(10, 3))
     q = quaternion_from_compact_axis_angle(a)
     R = jr.matrix_from_compact_axis_angle(a)
-    vR = np.einsum("nij,nj->ni", R, v)
+    vR = jr.apply_matrix(R, v)
     vq = jr.apply_quaternion(q, v)
     assert_array_almost_equal(vR, vq)
 
@@ -62,7 +62,7 @@ def test_apply_quaternion_2dims():
     v = rng.normal(size=(2, 5, 3))
     q = quaternion_from_compact_axis_angle(a)
     R = jr.matrix_from_compact_axis_angle(a)
-    vR = np.einsum("nij,nj->ni", R.reshape(-1, 3, 3), v.reshape(-1, 3)).reshape(2, 5, 3)
+    vR = jr.apply_matrix(R, v)
     vq = jr.apply_quaternion(q, v)
     assert_array_almost_equal(vR, vq)
 

@@ -3,6 +3,34 @@ import jax.numpy as jnp
 from jax.typing import ArrayLike
 
 
+def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
+    """Apply rotation matrix to vector.
+
+    Parameters
+    ----------
+    R : array-like, shape (..., 3, 3)
+        Rotation matrix.
+
+    v : array-like, shape (..., 3)
+        3d vector.
+
+    Returns
+    -------
+    w : array, shape (..., 3)
+        3d vector.
+    """
+    R = jnp.asarray(R)
+    v = jnp.asarray(v)
+    if not jnp.issubdtype(R.dtype, jnp.floating):
+        R = R.astype(jnp.float64)
+    if not jnp.issubdtype(v.dtype, jnp.floating):
+        v = v.astype(jnp.float64)
+
+    return jnp.einsum("nij,nj->ni", R.reshape(-1, 3, 3), v.reshape(-1, 3)).reshape(
+        *v.shape
+    )
+
+
 def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     """Compute axis-angle from rotation matrix.
 
