@@ -18,6 +18,10 @@ dual_quaternion_norm = jax.jit(jt.dual_quaternion_squared_norm)
 
 
 def test_norm_dual_quaternion():
+    # 1d
+    dual_quat_norm = norm_dual_quaternion(jnp.zeros(8))
+    assert_array_almost_equal(dual_quat_norm, jnp.array([1, 0, 0, 0, 0, 0, 0, 0]))
+
     rng = np.random.default_rng(83)
     for _ in range(20):
         dual_quat = rng.normal(size=8)
@@ -26,11 +30,22 @@ def test_norm_dual_quaternion():
         assert pytest.approx(norm[0], abs=1e-6) == 1.0
         assert pytest.approx(norm[1], abs=1e-6) == 0.0
 
+    # 2d
+    dual_quat_norm = norm_dual_quaternion(jnp.zeros((3, 8)))
+    for dqn in dual_quat_norm:
+        assert_array_almost_equal(dqn, jnp.array([1, 0, 0, 0, 0, 0, 0, 0]))
+
     dual_quat = rng.normal(size=(20, 8))
     dual_quat_norm = norm_dual_quaternion(dual_quat)
     norm = dual_quaternion_norm(dual_quat_norm)
     assert_array_almost_equal(norm[..., 0], 1.0)
     assert_array_almost_equal(norm[..., 1], 0.0)
+
+    # 3d
+    dual_quat_norm = norm_dual_quaternion(jnp.zeros((2, 2, 8)))
+    for a in dual_quat_norm:
+        for b in a:
+            assert_array_almost_equal(b, jnp.array([1, 0, 0, 0, 0, 0, 0, 0]))
 
     dual_quat = rng.normal(size=(5, 4, 8))
     dual_quat_norm = norm_dual_quaternion(dual_quat)

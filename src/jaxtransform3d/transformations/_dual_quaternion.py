@@ -45,12 +45,18 @@ def norm_dual_quaternion(dual_quat):
     real = dual_quat[..., :4]
     dual = dual_quat[..., 4:]
 
-    # 1. ensure unit norm of real quaternion
+    # 1. ensure valid real quaternion
     real_norm = jnp.linalg.norm(real, axis=-1)[..., jnp.newaxis]
+    invalid_real = real_norm == 0.0
+    identity = jnp.array([1.0, 0.0, 0.0, 0.0], dtype=dual_quat.dtype)
+    real = jnp.where(invalid_real, identity, real)
+    real_norm = jnp.where(invalid_real, 1.0, real_norm)
+
+    # 2. ensure unit norm of real quaternion
     real = real / real_norm
     dual = dual / real_norm
 
-    # 2. ensure orthogonality of real and dual quaternion
+    # 3. ensure orthogonality of real and dual quaternion
     dual = dual - jnp.sum(real * dual, axis=-1)[..., jnp.newaxis] * real
 
     return jnp.concatenate((real, dual), axis=-1)
