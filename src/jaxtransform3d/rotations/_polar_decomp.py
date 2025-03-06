@@ -68,7 +68,5 @@ def robust_polar_decomposition(
         omega = column_vector_cross_products.sum(axis=0) / (
             abs(column_vector_dot_products_sum) + eps
         )
-        if jnp.linalg.norm(omega) < eps:
-            break
         current_R = jnp.dot(matrix_from_compact_axis_angle(omega), current_R)
     return current_R
