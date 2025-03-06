@@ -50,6 +50,23 @@ def test_apply_transform():
     assert_array_almost_equal(w0[1], w01)
 
 
+def test_compose_transform():
+    rng = np.random.default_rng(832)
+    T1 = jt.transform_from_exponential_coordinates(rng.normal(size=(20, 3)))
+    T2 = jt.transform_from_exponential_coordinates(rng.normal(size=(20, 3)))
+
+    T = jt.compose_transforms(T1, T2)
+    T00 = jt.compose_transforms(T1[0], T2[0])
+    T11 = jt.compose_transforms(T1[1], T2[1])
+    assert_array_almost_equal(T[0], T00)
+    assert_array_almost_equal(T[1], T11)
+
+    T0 = jt.compose_transforms(T1[0], T2)
+    T01 = jt.compose_transforms(T1[0], T2[1])
+    assert_array_almost_equal(T0[0], T[0])
+    assert_array_almost_equal(T0[1], T01)
+
+
 def test_exponential_coordinates_from_transform_0dim():
     T1 = jnp.eye(4)
     exp_coords1 = exponential_coordinates_from_transform(T1)

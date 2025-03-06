@@ -65,22 +65,21 @@ def compose_transforms(T1: ArrayLike, T2: ArrayLike) -> jax.Array:
 
     Parameters
     ----------
-    T1 : array-like, shape (..., 4, 4)
+    T1 : array-like, shape (..., 4, 4) or (4, 4)
         Transformation matrix.
 
-    T2 : array-like, shape (..., 4, 4)
+    T2 : array-like, shape (..., 4, 4) or (4, 4)
         Transformation matrix.
 
     Returns
     -------
-    T1_T2 : array, shape (..., 4, 4)
+    T1_T2 : array, shape (..., 4, 4) or (4, 4)
         Composed transformation matrix.
     """
     T1 = jnp.asarray(T1)
     T2 = jnp.asarray(T2)
-    return jnp.einsum(
-        "nij,njk->nik", T1.reshape(-1, 4, 4), T2.reshape(-1, 4, 4)
-    ).reshape(*T1.shape)
+    bigger_shape = T1.shape if T1.size > T2.size else T2.shape
+    return (T1.reshape(-1, 4, 4) @ T2.reshape(-1, 4, 4)).reshape(bigger_shape)
 
 
 def create_transform(R: ArrayLike, t: ArrayLike) -> jax.Array:

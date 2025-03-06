@@ -58,22 +58,21 @@ def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
 
     Parameters
     ----------
-    R1 : array-like, shape (..., 3, 3)
+    R1 : array-like, shape (..., 3, 3) or (3, 3)
         Rotation matrix.
 
-    R2 : array-like, shape (..., 3, 3)
+    R2 : array-like, shape (..., 3, 3) or (3, 3)
         Rotation matrix.
 
     Returns
     -------
-    R1_R2 : array, shape (..., 3, 3)
+    R1_R2 : array, shape (..., 3, 3) or (3, 3)
         Composed rotation matrix.
     """
     R1 = jnp.asarray(R1)
     R2 = jnp.asarray(R2)
-    return jnp.einsum(
-        "nij,njk->nik", R1.reshape(-1, 3, 3), R2.reshape(-1, 3, 3)
-    ).reshape(*R1.shape)
+    bigger_shape = R1.shape if R1.size > R2.size else R2.shape
+    return (R1.reshape(-1, 3, 3) @ R2.reshape(-1, 3, 3)).reshape(bigger_shape)
 
 
 def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:

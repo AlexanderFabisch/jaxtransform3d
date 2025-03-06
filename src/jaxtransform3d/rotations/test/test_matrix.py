@@ -11,6 +11,23 @@ matrix_from_compact_axis_angle = jax.jit(jr.matrix_from_compact_axis_angle)
 compact_axis_angle_from_matrix = jax.jit(jr.compact_axis_angle_from_matrix)
 
 
+def test_compose_matrix():
+    rng = np.random.default_rng(832)
+    R1 = jr.matrix_from_compact_axis_angle(rng.normal(size=(20, 3)))
+    R2 = jr.matrix_from_compact_axis_angle(rng.normal(size=(20, 3)))
+
+    R = jr.compose_matrices(R1, R2)
+    R00 = jr.compose_matrices(R1[0], R2[0])
+    R11 = jr.compose_matrices(R1[1], R2[1])
+    assert_array_almost_equal(R[0], R00)
+    assert_array_almost_equal(R[1], R11)
+
+    R0 = jr.compose_matrices(R1[0], R2)
+    R01 = jr.compose_matrices(R1[0], R2[1])
+    assert_array_almost_equal(R0[0], R[0])
+    assert_array_almost_equal(R0[1], R01)
+
+
 def test_compact_axis_angle_from_matrix_0dim():
     R = jnp.eye(3)
     a = compact_axis_angle_from_matrix(R)
