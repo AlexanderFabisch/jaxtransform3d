@@ -2,7 +2,60 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
+from ..utils import norm_vector
 from ._axis_angle import matrix_from_compact_axis_angle
+
+
+def norm_matrix(R: ArrayLike) -> jax.Array:
+    r"""Orthonormalize rotation matrix.
+
+    A rotation matrix is defined as
+
+    .. math::
+
+        \boldsymbol R =
+        \left( \begin{array}{ccc}
+            r_{11} & r_{12} & r_{13}\\
+            r_{21} & r_{22} & r_{23}\\
+            r_{31} & r_{32} & r_{33}\\
+        \end{array} \right)
+        \in SO(3)
+
+    and must be orthonormal, which results in 6 constraints:
+
+    * column vectors must have unit norm (3 constraints)
+    * and must be orthogonal to each other (3 constraints)
+
+    A more compact representation of these constraints is
+    :math:`\boldsymbol R^T \boldsymbol R = \boldsymbol I`.
+
+    Because of numerical problems, a rotation matrix might not satisfy the
+    constraints anymore. This function will enforce them with Gram-Schmidt
+    orthonormalization optimized for 3 dimensions.
+
+    Parameters
+    ----------
+    R : array-like, shape (3, 3)
+        Rotation matrix with small numerical errors.
+
+    Returns
+    -------
+    R : array, shape (3, 3)
+        Orthonormalized rotation matrix.
+
+    See Also
+    --------
+    check_matrix : Checks orthonormality of a rotation matrix.
+    robust_polar_decomposition
+        A more expensive orthonormalization method that spreads the error more
+        evenly between the basis vectors.
+    """
+    R = jnp.asarray(R)
+    c2 = R[:, 1]
+    c3 = norm_vector(R[:, 2])
+    c1 = norm_vector(jnp.cross(c2, c3))
+    c2 = norm_vector(jnp.cross(c3, c1))
+    return jnp.column_stack((c1, c2, c3))
 
 
 def robust_polar_decomposition(
