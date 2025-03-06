@@ -9,6 +9,7 @@ import jaxtransform3d.rotations as jr
 
 compose_quaternions = jax.jit(jr.compose_quaternions)
 quaternion_conjugate = jax.jit(jr.quaternion_conjugate)
+apply_quaternion = jax.jit(jr.apply_quaternion)
 quaternion_from_compact_axis_angle = jax.jit(jr.quaternion_from_compact_axis_angle)
 compact_axis_angle_from_quaternion = jax.jit(jr.compact_axis_angle_from_quaternion)
 
@@ -30,6 +31,40 @@ def test_batch_concatenate_q_conj():
     Q_Q_conj = compose_quaternions(Q, Q_conj)
 
     assert_array_almost_equal(Q_Q_conj.reshape(-1, 4), np.array([[1, 0, 0, 0]] * 10))
+
+
+def test_apply_quaternion_0dim():
+    rng = np.random.default_rng(0)
+    for _ in range(5):
+        a = rng.normal(size=3)
+        v = rng.normal(size=3)
+        q = quaternion_from_compact_axis_angle(a)
+        R = jr.matrix_from_compact_axis_angle(a)
+        vR = R @ v
+        vq = jr.apply_quaternion(q, v)
+        assert_array_almost_equal(vR, vq)
+
+
+def test_apply_quaternion_1dim():
+    rng = np.random.default_rng(1)
+    a = rng.normal(size=(10, 3))
+    v = rng.normal(size=(10, 3))
+    q = quaternion_from_compact_axis_angle(a)
+    R = jr.matrix_from_compact_axis_angle(a)
+    vR = np.einsum("nij,nj->ni", R, v)
+    vq = jr.apply_quaternion(q, v)
+    assert_array_almost_equal(vR, vq)
+
+
+def test_apply_quaternion_2dims():
+    rng = np.random.default_rng(1)
+    a = rng.normal(size=(2, 5, 3))
+    v = rng.normal(size=(2, 5, 3))
+    q = quaternion_from_compact_axis_angle(a)
+    R = jr.matrix_from_compact_axis_angle(a)
+    vR = np.einsum("nij,nj->ni", R.reshape(-1, 3, 3), v.reshape(-1, 3)).reshape(2, 5, 3)
+    vq = jr.apply_quaternion(q, v)
+    assert_array_almost_equal(vR, vq)
 
 
 def test_quaternion_from_compact_axis_angle_0dim():

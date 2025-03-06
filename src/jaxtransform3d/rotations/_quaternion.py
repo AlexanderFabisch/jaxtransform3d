@@ -88,6 +88,55 @@ def quaternion_conjugate(q: ArrayLike) -> jax.Array:
     return jnp.concatenate((q[..., 0, jnp.newaxis], -q[..., 1:]), axis=-1)
 
 
+def apply_quaternion(q: ArrayLike, v: ArrayLike) -> jax.Array:
+    r"""Apply rotation represented by a quaternion to a vector.
+
+    We use Hamilton's quaternion multiplication.
+
+    To apply the rotation defined by a unit quaternion :math:`\boldsymbol{q}
+    \in S^3` to a vector :math:`\boldsymbol{v} \in \mathbb{R}^3`, we
+    first represent the vector as a quaternion: we set the scalar part to 0 and
+    the vector part is exactly the original vector
+    :math:`\left(\begin{array}{c}0\\\boldsymbol{v}\end{array}\right) \in
+    \mathbb{R}^4`. Then we left-multiply the quaternion and right-multiply
+    its conjugate
+
+    .. math::
+
+        \left(\begin{array}{c}0\\\boldsymbol{w}\end{array}\right)
+        =
+        \boldsymbol{q}
+        \cdot
+        \left(\begin{array}{c}0\\\boldsymbol{v}\end{array}\right)
+        \cdot
+        \boldsymbol{q}^*.
+
+    The vector part :math:`\boldsymbol{w}` of the resulting quaternion is
+    the rotated vector.
+
+    Parameters
+    ----------
+    q : array-like, shape (..., 4)
+        Unit quaternion to represent rotation: (w, x, y, z)
+
+    v : array-like, shape (..., 3)
+        3d vector
+
+    Returns
+    -------
+    w : array, shape (..., 3)
+        3d vector
+    """
+    q = jnp.asarray(q)
+    if not jnp.issubdtype(q.dtype, jnp.floating):
+        q = q.astype(jnp.float64)
+    q = q.reshape(-1, 4)
+    real = q[:, 0]
+    vec = q[:, 1:]
+    t = 2.0 * jnp.cross(vec, v.reshape(-1, 3))
+    return v + (real[:, jnp.newaxis] * t + jnp.cross(vec, t)).reshape(v.shape)
+
+
 def compact_axis_angle_from_quaternion(q: ArrayLike) -> jax.Array:
     """Compute axis-angle from quaternion.
 
