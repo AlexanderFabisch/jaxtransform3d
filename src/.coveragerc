@@ -1,0 +1,13 @@
+[paths]
+source =
+    src/jaxtransform3d
+
+[run]
+branch = true
+parallel = true
+source =
+    src/jaxtransform3d
+
+[report]
+show_missing = true
+precision = 1

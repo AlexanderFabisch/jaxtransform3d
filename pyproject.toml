@@ -1,0 +1,105 @@
+[project]
+name = "jaxtransform3d"
+dynamic = ["version"]  # defined by build backend
+description = "3D transformations for JAX"
+readme = "README.md"
+maintainers = [
+    {name = "Alexander Fabisch", email = "afabisch@googlemail.com"},
+]
+dependencies = [
+    "numpy",
+    "jax",
+]
+requires-python = ">= 3.12"
+license = {file = "COPYING"}
+classifiers=[
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+[project.optional-dependencies]
+docs = [
+    "matplotlib",
+    "sphinx",
+    "sphinx-gallery",
+    "numpydoc",
+]
+examples = [
+    "matplotlib",
+]
+tests = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "black",
+    "mypy",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ["py312", "py313"]
+include = '''
+/(
+      jaxtransform3d
+    | examples
+)\/.*\.pyi?$
+'''
+exclude = '''
+/(
+      .git
+    | __pycache__
+    | doc
+    | venv
+    | build
+    | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+include = [
+    "src/jaxtransform3d/**/*.py",
+]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+# all rules can be found here: https://beta.ruff.rs/docs/rules/
+ignore=[
+    "SIM108",  # Use ternary operator
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+# for more details on configuration, see
+# https://github.com/pytest-dev/pytest-cov/tree/4732d50f2322a6e0ea480a6c400fbc96f78283bb/examples/src-layout
+norecursedirs = [".git", ".venv", "dist"]
+python_files = ["test_*.py"]
+testpaths = ["src/jaxtransform3d/**/test"]
+addopts = "--cov-config=.coveragerc --cov=jaxtransform3d --cov-report html"
