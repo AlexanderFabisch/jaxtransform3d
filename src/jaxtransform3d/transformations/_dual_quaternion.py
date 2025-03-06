@@ -46,15 +46,15 @@ def norm_dual_quaternion(dual_quat):
         dual_quat, dual_quaternion_quaternion_conjugate(dual_quat)
     )
     prod_real = prod[..., 0]  # vector part is 0
-    prod_dual = prod[..., 4:]
+    prod_dual = prod[..., 4]
 
     prod_real_norm = jnp.sqrt(prod_real)[..., jnp.newaxis]
 
     real_inv_sqrt = 1.0 / prod_real_norm
-    dual_inv_sqrt = -0.5 * prod_dual * real_inv_sqrt**3
+    dual_inv_sqrt = -0.5 * prod_dual[..., jnp.newaxis] * real_inv_sqrt**3
 
     real_norm = real_inv_sqrt * real
-    dual_norm = real_inv_sqrt * dual + compose_quaternions(dual_inv_sqrt, real)
+    dual_norm = real_inv_sqrt * dual + dual_inv_sqrt * real
 
     return jnp.concatenate((real_norm, dual_norm), axis=-1)
 
@@ -82,8 +82,8 @@ def dual_quaternion_norm(dual_quat: ArrayLike) -> jax.Array:
         dual_quat, dual_quaternion_quaternion_conjugate(dual_quat)
     )
 
-    real = jnp.sum(prod[..., :4], axis=-1)[..., jnp.newaxis]
-    dual = jnp.sum(prod[..., 4:], axis=-1)[..., jnp.newaxis]
+    real = prod[..., 0, jnp.newaxis]
+    dual = prod[..., 4, jnp.newaxis]
 
     return jnp.concatenate((real, dual), axis=-1)
 
