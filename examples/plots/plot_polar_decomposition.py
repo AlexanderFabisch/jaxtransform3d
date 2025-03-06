@@ -13,12 +13,18 @@ through robust polar decomposition. For comparison, we show the unnormalized
 basis with dashed lines in the last two rows.
 """
 
+from functools import partial
+
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
 import pytransform3d.rotations as pr
 
 import jaxtransform3d.rotations as jr
+
+robust_polar_decomposition = jax.jit(
+    jax.vmap(partial(jr.robust_polar_decomposition, n_iter=5), in_axes=0, out_axes=0)
+)
 
 n_cases = 8
 fig, axes = plt.subplots(3, n_cases, subplot_kw={"projection": "3d"}, figsize=(14, 8))
@@ -44,7 +50,7 @@ for i in range(n_cases):
         pr.random_matrix(rng, cov=0.1 * np.eye(3)),
         R_unnormalized[i, :, random_axis],
     )
-robust_polar_decomposition = jax.jit(jr.robust_polar_decomposition)
+R_rpd = robust_polar_decomposition(R_unnormalized)
 for i in range(n_cases):
     pr.plot_basis(axes[0, i], R_unnormalized[i], p=plot_center, strict_check=False)
 
@@ -54,11 +60,10 @@ for i in range(n_cases):
     )
     pr.plot_basis(axes[1, i], R_gs, p=plot_center)
 
-    R_pd = robust_polar_decomposition(R_unnormalized[i])
     pr.plot_basis(
         axes[2, i], R_unnormalized[i], p=plot_center, strict_check=False, ls="--"
     )
-    pr.plot_basis(axes[2, i], R_pd, p=plot_center)
+    pr.plot_basis(axes[2, i], R_rpd[i], p=plot_center)
 
 plt.tight_layout()
 plt.show()
