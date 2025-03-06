@@ -11,6 +11,7 @@ create_transform = jax.jit(jt.create_transform)
 exponential_coordinates_from_transform = jax.jit(
     jt.exponential_coordinates_from_transform
 )
+compose_transforms = jax.jit(jt.compose_transforms)
 
 
 def test_create_transform():
@@ -52,17 +53,17 @@ def test_apply_transform():
 
 def test_compose_transform():
     rng = np.random.default_rng(832)
-    T1 = jt.transform_from_exponential_coordinates(rng.normal(size=(20, 3)))
-    T2 = jt.transform_from_exponential_coordinates(rng.normal(size=(20, 3)))
+    T1 = jt.transform_from_exponential_coordinates(rng.normal(size=(20, 6)))
+    T2 = jt.transform_from_exponential_coordinates(rng.normal(size=(20, 6)))
 
-    T = jt.compose_transforms(T1, T2)
-    T00 = jt.compose_transforms(T1[0], T2[0])
-    T11 = jt.compose_transforms(T1[1], T2[1])
+    T = compose_transforms(T1, T2)
+    T00 = compose_transforms(T1[0], T2[0])
+    T11 = compose_transforms(T1[1], T2[1])
     assert_array_almost_equal(T[0], T00)
     assert_array_almost_equal(T[1], T11)
 
-    T0 = jt.compose_transforms(T1[0], T2)
-    T01 = jt.compose_transforms(T1[0], T2[1])
+    T0 = compose_transforms(T1[0], T2)
+    T01 = compose_transforms(T1[0], T2[1])
     assert_array_almost_equal(T0[0], T[0])
     assert_array_almost_equal(T0[1], T01)
 
