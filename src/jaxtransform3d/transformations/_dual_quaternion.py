@@ -45,10 +45,10 @@ def norm_dual_quaternion(dual_quat):
     prod = compose_dual_quaternions(
         dual_quat, dual_quaternion_quaternion_conjugate(dual_quat)
     )
-    prod_real = prod[..., :4]
+    prod_real = prod[..., 0]  # vector part is 0
     prod_dual = prod[..., 4:]
 
-    prod_real_norm = jnp.sqrt(jnp.sum(prod_real, axis=-1)[..., jnp.newaxis])
+    prod_real_norm = jnp.sqrt(prod_real)[..., jnp.newaxis]
 
     real_inv_sqrt = 1.0 / prod_real_norm
     dual_inv_sqrt = -0.5 * prod_dual * real_inv_sqrt**3
