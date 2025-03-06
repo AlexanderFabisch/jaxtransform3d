@@ -1,3 +1,4 @@
+import chex
 import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
@@ -46,6 +47,11 @@ def compose_quaternions(q1: ArrayLike, q2: ArrayLike) -> jax.Array:
     q2 = jnp.asarray(q2)
     if not jnp.issubdtype(q2.dtype, jnp.floating):
         q2 = q2.astype(jnp.float64)
+
+    chex.assert_equal_shape((q1, q2))
+    chex.assert_axis_dimension(q1, axis=-1, expected=4)
+    chex.assert_axis_dimension(q2, axis=-1, expected=4)
+
     vec1 = q1[..., 1:]
     vec2 = q2[..., 1:]
     real = q1[..., 0] * q2[..., 0] - jnp.sum(vec1 * vec2, axis=-1)
@@ -85,6 +91,9 @@ def quaternion_conjugate(q: ArrayLike) -> jax.Array:
     q = jnp.asarray(q)
     if not jnp.issubdtype(q.dtype, jnp.floating):
         q = q.astype(jnp.float64)
+
+    chex.assert_axis_dimension(q, axis=-1, expected=4)
+
     return jnp.concatenate((q[..., 0, jnp.newaxis], -q[..., 1:]), axis=-1)
 
 
@@ -130,6 +139,11 @@ def apply_quaternion(q: ArrayLike, v: ArrayLike) -> jax.Array:
     q = jnp.asarray(q)
     if not jnp.issubdtype(q.dtype, jnp.floating):
         q = q.astype(jnp.float64)
+
+    chex.assert_equal_shape_prefix((q, v), prefix_len=q.ndim - 1)
+    chex.assert_axis_dimension(q, axis=-1, expected=4)
+    chex.assert_axis_dimension(v, axis=-1, expected=3)
+
     q = q.reshape(-1, 4)
     real = q[:, 0]
     vec = q[:, 1:]
@@ -156,6 +170,8 @@ def compact_axis_angle_from_quaternion(q: ArrayLike) -> jax.Array:
     q = jnp.asarray(q)
     if not jnp.issubdtype(q.dtype, jnp.floating):
         q = q.astype(jnp.float64)
+
+    chex.assert_axis_dimension(q, axis=-1, expected=4)
 
     real = q[..., 0]
     vec = q[..., 1:]

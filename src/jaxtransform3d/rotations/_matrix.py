@@ -1,3 +1,4 @@
+import chex
 import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
@@ -25,6 +26,9 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
         R = R.astype(jnp.float64)
     if not jnp.issubdtype(v.dtype, jnp.floating):
         v = v.astype(jnp.float64)
+
+    chex.assert_equal_shape_prefix((R, v), prefix_len=R.ndim - 1)
+    chex.assert_axis_dimension(R, axis=-1, expected=3)
 
     return jnp.einsum("nij,nj->ni", R.reshape(-1, 3, 3), v.reshape(-1, 3)).reshape(
         *v.shape
@@ -54,6 +58,9 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     if not jnp.issubdtype(R.dtype, jnp.floating):
         R = R.astype(jnp.float64)
 
+    chex.assert_axis_dimension(R, axis=-2, expected=3)
+    chex.assert_axis_dimension(R, axis=-1, expected=3)
+
     instances_shape = R.shape[:-2]
     R = R.reshape(-1, 3, 3)
 
@@ -79,11 +86,11 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     angle_nonzero = angle != 0.0
     axis = jnp.where(angle_nonzero[:, jnp.newaxis], axis, 0.0)
 
-    rot_vec = axis * angle[:, jnp.newaxis]
+    axis_angle = axis * angle[:, jnp.newaxis]
 
     if instances_shape:
-        rot_vec = rot_vec.reshape(*instances_shape + (3,))
+        axis_angle = axis_angle.reshape(*instances_shape + (3,))
     else:
-        rot_vec = rot_vec[0]
+        axis_angle = axis_angle[0]
 
-    return rot_vec
+    return axis_angle

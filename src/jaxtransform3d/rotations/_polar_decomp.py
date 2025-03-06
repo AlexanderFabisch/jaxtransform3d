@@ -1,3 +1,4 @@
+import chex
 import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
@@ -51,6 +52,9 @@ def norm_matrix(R: ArrayLike) -> jax.Array:
         evenly between the basis vectors.
     """
     R = jnp.asarray(R)
+
+    chex.assert_shape(R, (3, 3))
+
     c2 = R[:, 1]
     c3 = norm_vector(R[:, 2])
     c1 = norm_vector(jnp.cross(c2, c3))
@@ -112,7 +116,12 @@ def robust_polar_decomposition(
        In MIG '16: Proceedings of the 9th International Conference on Motion in
        Games, pp. 55-60, doi: 10.1145/2994258.2994269.
     """
+    A = jnp.asarray(A)
+
+    chex.assert_shape(A, (3, 3))
+
     current_R = jnp.eye(3)
+
     for _ in range(n_iter):
         column_vector_cross_products = jnp.cross(
             current_R, A, axisa=0, axisb=0, axisc=1

@@ -1,3 +1,4 @@
+import chex
 import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
@@ -46,6 +47,10 @@ def matrix_from_compact_axis_angle(
     else:
         axis = jnp.asarray(axis)
 
+    chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
+    chex.assert_equal_shape((axis_angle, axis))
+    chex.assert_equal_shape_prefix((axis_angle, angle), prefix_len=axis_angle.ndim - 1)
+
     c = jnp.cos(angle)
     s = jnp.sin(angle)
     ci = 1.0 - c
@@ -69,14 +74,14 @@ def matrix_from_compact_axis_angle(
     return jnp.stack((col1, col2, col3), axis=-1)
 
 
-def quaternion_from_compact_axis_angle(a: ArrayLike) -> jax.Array:
+def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     """Compute quaternion from axis-angle.
 
     This operation is called exponential map.
 
     Parameters
     ----------
-    a : array-like, shape (3,)
+    axis_angle : array-like, shape (3,)
         Axis of rotation and rotation angle: angle * (x, y, z)
 
     Returns
@@ -84,9 +89,12 @@ def quaternion_from_compact_axis_angle(a: ArrayLike) -> jax.Array:
     q : array, shape (4,)
         Unit quaternion to represent rotation: (w, x, y, z)
     """
-    a = jnp.asarray(a)
-    angle = jnp.linalg.norm(a, axis=-1)
-    axis = norm_vector(a, norm=angle)
+    axis_angle = jnp.asarray(axis_angle)
+
+    chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
+
+    angle = jnp.linalg.norm(axis_angle, axis=-1)
+    axis = norm_vector(axis_angle, norm=angle)
 
     half_angle = 0.5 * angle
     real = jnp.cos(half_angle)[..., jnp.newaxis]
