@@ -16,10 +16,7 @@ def norm_dual_quaternion(dual_quat):
     """Normalize unit dual quaternion.
 
     A unit dual quaternion has a real quaternion with unit norm and an
-    orthogonal real part. Both properties are enforced by multiplying a
-    normalization factor [1]_. This is not always necessary. It is often
-    sufficient to only enforce the unit norm property of the real quaternion.
-    This can also be done with :func:`check_dual_quaternion`.
+    orthogonal real part. Both properties are enforced by this function.
 
     Parameters
     ----------
@@ -37,6 +34,11 @@ def norm_dual_quaternion(dual_quat):
     ----------
     .. [1] enki (2023). Properly normalizing a dual quaternion.
        https://stackoverflow.com/a/76313524
+
+    See Also
+    --------
+    dual_quaternion_squared_norm
+        Computes the squared norm of a dual quaternion.
     """
     dual_quat = jnp.asarray(dual_quat)
 
@@ -92,12 +94,16 @@ def dual_quaternion_squared_norm(dual_quat: ArrayLike) -> jax.Array:
 
 
 def compose_dual_quaternions(dual_quat1: ArrayLike, dual_quat2: ArrayLike) -> jax.Array:
-    """Concatenate dual quaternions.
+    r"""Concatenate dual quaternions.
 
-    Suppose we want to apply two extrinsic transforms given by dual
-    quaternions dq1 and dq2 to a vector v. We can either apply dq2 to v and
-    then dq1 to the result or we can concatenate dq1 and dq2 and apply the
-    result to v.
+    Computes the dual quaternion product
+
+    .. math::
+
+        \begin{eqnarray}
+        \sigma_1 \sigma_2 &=& (p_1 + q_1 \epsilon) (p_2 + q_2 \epsilon)\\
+        &=& p_1 p_2 + (p_1 q_2 + q_1 p_2) \epsilon.
+        \end{eqnarray}
 
     Parameters
     ----------
@@ -162,7 +168,7 @@ def apply_dual_quaternion(dual_quat: ArrayLike, v: ArrayLike) -> jax.Array:
     r"""Apply transform represented by a dual quaternion to a vector.
 
     To apply the transformation defined by a unit dual quaternion
-    :math:`\boldsymbol{q}` to a point :math:`\boldsymbol{v} \in \mathbb{R}^3`,
+    :math:`\sigma` to a point :math:`\boldsymbol{v} \in \mathbb{R}^3`,
     we first represent the vector as a dual quaternion: we set the real part to
     (1, 0, 0, 0) and the dual part is a pure quaternion with the scalar part
     0 and the vector as its vector part
@@ -174,11 +180,11 @@ def apply_dual_quaternion(dual_quat: ArrayLike, v: ArrayLike) -> jax.Array:
 
         \left(\begin{array}{c}1\\0\\0\\0\\0\\\boldsymbol{w}\end{array}\right)
         =
-        \boldsymbol{q}
+        \sigma
         \cdot
         \left(\begin{array}{c}1\\0\\0\\0\\0\\\boldsymbol{v}\end{array}\right)
         \cdot
-        \boldsymbol{q}^*.
+        \sigma^*.
 
     The vector part of the dual part :math:`\boldsymbol{w}` of the resulting
     quaternion is the rotated point.

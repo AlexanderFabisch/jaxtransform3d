@@ -8,7 +8,25 @@ from ..utils import norm_vector
 
 
 def transform_inverse(T: ArrayLike) -> jax.Array:
-    """Invert transformation matrix.
+    r"""Invert transformation matrix.
+
+    .. math::
+
+        \boldsymbol{T}^{-1}
+        =
+        \left(
+        \begin{array}{cc}
+        \boldsymbol{R} & \boldsymbol{t}\\
+        \boldsymbol{0} & 1
+        \end{array}
+        \right)^{-1}
+        =
+        \left(
+        \begin{array}{cc}
+        \boldsymbol{R}^T & -\boldsymbol{R}^T \boldsymbol{t}\\
+        \boldsymbol{0} & 1
+        \end{array}
+        \right)
 
     Parameters
     ----------
@@ -31,7 +49,11 @@ def transform_inverse(T: ArrayLike) -> jax.Array:
 
 
 def apply_transform(T: ArrayLike, v: ArrayLike) -> jax.Array:
-    """Apply transformation matrix to vector.
+    r"""Apply transformation matrix to vector.
+
+    .. math::
+
+        \boldsymbol{w} = \boldsymbol{R} \boldsymbol{v} + \boldsymbol{t}
 
     Parameters
     ----------
@@ -87,9 +109,9 @@ def create_transform(R: ArrayLike, t: ArrayLike) -> jax.Array:
 
     .. math::
 
-        \boldsymbol{T}_{BA} = \left(
+        \boldsymbol{T} = \left(
         \begin{array}{cc}
-        \boldsymbol{R} & \boldsymbol{p}\\
+        \boldsymbol{R} & \boldsymbol{t}\\
         \boldsymbol{0} & 1
         \end{array}
         \right) \in SE(3)

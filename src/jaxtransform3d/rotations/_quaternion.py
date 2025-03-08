@@ -16,7 +16,7 @@ def norm_quaternion(q: ArrayLike) -> jax.Array:
 
     Returns
     -------
-    q_norm : array-like, shape (..., 4)
+    q_norm : array, shape (..., 4)
         Normalized quaternion.
     """
     q = jnp.asarray(q)
@@ -44,24 +44,25 @@ def compose_quaternions(q1: ArrayLike, q2: ArrayLike) -> jax.Array:
     .. math::
 
         \boldsymbol{q}_{12} =
-        (w_1 w_2 - \boldsymbol{v}_1 \cdot \boldsymbol{v}_2,
+        (w_1 w_2 - \boldsymbol{v}_1^T \cdot \boldsymbol{v}_2,
         w_1 \boldsymbol{v}_2 + w_2 \boldsymbol{v}_1
         + \boldsymbol{v}_1 \times \boldsymbol{v}_2)
 
-    with the scalar product :math:`\cdot` and the cross product :math:`\times`.
+    with the dot product :math:`\cdot` and the cross product :math:`\times`.
 
     Parameters
     ----------
     q1 : array-like, shape (..., 4)
-        First quaternion
+        First quaternion, scalar first.
 
     q2 : array-like, shape (..., 4)
-        Second quaternion
+        Second quaternion, scalar first.
 
     Returns
     -------
     q12 : array, shape (..., 4)
-        Quaternion that represents the concatenated rotation q1 * q2
+        Quaternion that represents the concatenated rotation
+        :math:`\boldsymbol{q}_1\boldsymbol{q}_2`.
     """
     q1 = jnp.asarray(q1)
     if not jnp.issubdtype(q1.dtype, jnp.floating):
