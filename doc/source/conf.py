@@ -30,6 +30,14 @@ html_theme_options = {
     "collapse_navigation": True,
 }
 html_static_path = ["_static"]
+html_show_sourcelink = False
+html_show_sphinx = False
+html_show_copyright = True
+
+autodoc_default_options = {"member-order": "bysource"}
+autosummary_generate = True  # generate files at doc/source/_apidoc
+class_members_toctree = False
+numpydoc_show_class_members = False
 
 intersphinx_mapping = {
     "python": (f"https://docs.python.org/{sys.version_info.major}", None),
