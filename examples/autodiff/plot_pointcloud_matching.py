@@ -1,10 +1,17 @@
+"""
+=================
+Match Pointclouds
+=================
+
+"""
+
 import jax
-import numpy as np
 import jax.numpy as jnp
-import jaxtransform3d.transformations as jt
-import pytransform3d.transformations as pt
-import pytransform3d.plot_utils as ppu
 import matplotlib.pyplot as plt
+import numpy as np
+import pytransform3d.transformations as pt
+
+import jaxtransform3d.transformations as jt
 
 rng = np.random.default_rng(23)
 pointcloud_A = jnp.asarray(rng.normal(size=(15, 3)))

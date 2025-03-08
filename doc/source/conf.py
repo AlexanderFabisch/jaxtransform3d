@@ -19,7 +19,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "matplotlib.sphinxext.plot_directive",
     "numpydoc",
-    #"sphinx_gallery.gen_gallery",
+    "sphinx_gallery.gen_gallery",
 ]
 
 templates_path = ['_templates']
@@ -46,3 +46,13 @@ intersphinx_mapping = {
     "jax": ("https://docs.jax.dev/en/latest/", None),
 }
 intersphinx_timeout = 10
+
+sphinx_gallery_conf = {
+    "examples_dirs": "../../examples",
+    "gallery_dirs": "_auto_examples",
+    "reference_url": {"jaxtransform3d": None},
+    "filename_pattern": "/plot_",
+    "image_scrapers": ("matplotlib"),
+    "backreferences_dir": "_auto_examples/backreferences",
+    "doc_module": "jaxtransform3d",
+}

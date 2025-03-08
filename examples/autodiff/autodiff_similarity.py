@@ -1,3 +1,10 @@
+"""
+=====================
+Find Similar Rotation
+=====================
+
+"""
+
 import jax
 
 import jaxtransform3d.rotations as jr

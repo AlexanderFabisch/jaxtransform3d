@@ -8,3 +8,4 @@ jaxtransform3d
    :hidden:
 
    api
+   _auto_examples/index
