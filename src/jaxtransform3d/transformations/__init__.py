@@ -1,4 +1,14 @@
-"""Proper rigid transformations in 3D."""
+r"""
+Proper Rigid Transformations in 3D
+----------------------------------
+
+The group of all proper rigid transformations (rototranslations) in
+3D Cartesian space is :math:`SE(3)` (SE: special Euclidean group).
+Transformations consist of a rotation and a translation. Those can be
+represented in different ways just like rotations can be expressed
+in different ways. The minimum number of components that are required to
+describe any transformation from :math:`SE(3)` is 6.
+"""
 
 from ._dual_quaternion import (
     apply_dual_quaternion,
