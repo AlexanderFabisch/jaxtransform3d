@@ -32,6 +32,22 @@ Testing:
 pytest
 ```
 
+Build documentation:
+
+```bash
+pip install -e .[doc]
+cd doc/
+make html
+```
+
+Run doctests:
+
+```bash
+cd doc/
+make doctest
+```
+
+
 ## License
 
 The library is released under BSD 3-clause license.

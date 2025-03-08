@@ -22,10 +22,48 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
     -------
     R_inv : array, shape (..., 3, 3)
         Inverted rotation matrix.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import matrix_inverse
+
+    Inverting a single rotation matrix:
+
+    >>> matrix_inverse(jnp.eye(3))
+    Array([[1., 0., 0.],
+           [0., 1., 0.],
+           [0., 0., 1.]], dtype=float32)
+
+    Inversion is inhenrently vectorized. You can easily apply it to any number
+    of dimensions, e.g., a 1D list of rotation matrices:
+
+    >>> import jax
+    >>> from jaxtransform3d.rotations import matrix_from_compact_axis_angle
+    >>> key = jax.random.PRNGKey(42)
+    >>> a = jax.random.normal(key, shape=(20, 3))
+    >>> R = matrix_from_compact_axis_angle(a)
+    >>> R_inv = matrix_inverse(R)
+    >>> R_inv
+    Array([[[...]]], dtype=float32)
+    >>> R_inv.shape
+    (20, 3, 3)
+
+    Or a 2D list of rotation matrices:
+    >>> R = R.reshape(5, 4, 3, 3)
+    >>> R_inv = matrix_inverse(R)
+    >>> R_inv
+    Array([[[[...]]]], dtype=float32)
+    >>> R_inv.shape
+    (5, 4, 3, 3)
     """
     R = jnp.asarray(R)
     if not jnp.issubdtype(R.dtype, jnp.floating):
         R = R.astype(jnp.float64)
+
+    chex.assert_axis_dimension(R, axis=-2, expected=3)
+    chex.assert_axis_dimension(R, axis=-1, expected=3)
+
     return jnp.swapaxes(R, -1, -2)
 
 
