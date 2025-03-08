@@ -26,9 +26,10 @@ classifiers=[
 ]
 
 [project.optional-dependencies]
-docs = [
+doc = [
     "sphinx",
     "sphinx-gallery",
+    "pydata-sphinx-theme",
     "numpydoc",
     "numpy",
     "matplotlib",
