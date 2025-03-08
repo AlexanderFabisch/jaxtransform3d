@@ -11,22 +11,32 @@ API Documentation
     :no-members:
     :no-inherited-members:
 
+Rotation Matrices
+-----------------
+
 .. autosummary::
    :toctree: _apidoc/
 
-   ~matrix_from_compact_axis_angle
-   ~quaternion_from_compact_axis_angle
-   ~matrix_inverse
-   ~apply_matrix
-   ~compose_matrices
-   ~compact_axis_angle_from_matrix
-   ~norm_quaternion
-   ~compose_quaternions
-   ~quaternion_conjugate
-   ~apply_quaternion
-   ~compact_axis_angle_from_quaternion
    ~norm_matrix
    ~robust_polar_decomposition
+   ~matrix_inverse
+   ~compose_matrices
+   ~apply_matrix
+   ~matrix_from_compact_axis_angle
+   ~compact_axis_angle_from_matrix
+
+Quaternions
+-----------
+
+.. autosummary::
+   :toctree: _apidoc/
+
+   ~norm_quaternion
+   ~quaternion_conjugate
+   ~compose_quaternions
+   ~apply_quaternion
+   ~quaternion_from_compact_axis_angle
+   ~compact_axis_angle_from_quaternion
 
 
 :mod:`jaxtransform3d.transformations`
@@ -36,6 +46,9 @@ API Documentation
     :no-members:
     :no-inherited-members:
 
+Transformation Matrices
+-----------------------
+
 .. autosummary::
    :toctree: _apidoc/
 
@@ -43,12 +56,19 @@ API Documentation
    ~apply_transform
    ~compose_transforms
    ~create_transform
-   ~exponential_coordinates_from_transform
    ~transform_from_exponential_coordinates
-   ~dual_quaternion_from_exponential_coordinates
+   ~exponential_coordinates_from_transform
+
+Dual Quaternions
+----------------
+
+.. autosummary::
+   :toctree: _apidoc/
+
    ~norm_dual_quaternion
    ~dual_quaternion_squared_norm
-   ~compose_dual_quaternions
    ~dual_quaternion_quaternion_conjugate
+   ~compose_dual_quaternions
    ~apply_dual_quaternion
+   ~dual_quaternion_from_exponential_coordinates
    ~exponential_coordinates_from_dual_quaternion
