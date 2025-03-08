@@ -1,6 +1,6 @@
 [project]
 name = "jaxtransform3d"
-dynamic = ["version"]  # defined by build backend
+dynamic = ["version"]
 description = "3D transformations for JAX"
 readme = "README.md"
 maintainers = [
@@ -25,19 +25,23 @@ classifiers=[
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
+
 [project.optional-dependencies]
 docs = [
     "matplotlib",
     "sphinx",
     "sphinx-gallery",
     "numpydoc",
+    "pytransform3d",
 ]
 examples = [
     "matplotlib",
+    "pytransform3d",
 ]
 tests = [
     "pytest",
     "pytest-cov",
+    "pytransform3d",
     "ruff",
     "black",
     "mypy",
@@ -46,6 +50,9 @@ tests = [
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "jaxtransform3d.__version__"}
 
 [tool.black]
 line-length = 88
