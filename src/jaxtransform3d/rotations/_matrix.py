@@ -48,6 +48,12 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
     Array([[[...]]], dtype=float32)
     >>> R_inv.shape
     (20, 3, 3)
+    >>> from jaxtransform3d.rotations import compose_matrices
+    >>> I = compose_matrices(R, R_inv)
+    >>> I[0].round(5)
+    Array([[...1., ...0., ...0.],
+           [...0., ...1., ...0.],
+           [...0., ...0., ...1.]], ...)
 
     Or a 2D list of rotation matrices:
 
@@ -57,6 +63,11 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
     Array([[[[...]]]], dtype=float32)
     >>> R_inv.shape
     (5, 4, 3, 3)
+    >>> I = compose_matrices(R, R_inv)
+    >>> I[0, 0].round(5)
+    Array([[...1., ...0., ...0.],
+           [...0., ...1., ...0.],
+           [...0., ...0., ...1.]], ...)
     """
     R = jnp.asarray(R)
     if not jnp.issubdtype(R.dtype, jnp.floating):
