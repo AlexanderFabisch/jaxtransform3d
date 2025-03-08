@@ -50,6 +50,7 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
     (20, 3, 3)
 
     Or a 2D list of rotation matrices:
+
     >>> R = R.reshape(5, 4, 3, 3)
     >>> R_inv = matrix_inverse(R)
     >>> R_inv
