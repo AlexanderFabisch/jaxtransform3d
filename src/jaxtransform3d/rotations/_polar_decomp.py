@@ -46,7 +46,6 @@ def norm_matrix(R: ArrayLike) -> jax.Array:
 
     See Also
     --------
-    check_matrix : Checks orthonormality of a rotation matrix.
     robust_polar_decomposition
         A more expensive orthonormalization method that spreads the error more
         evenly between the basis vectors.
