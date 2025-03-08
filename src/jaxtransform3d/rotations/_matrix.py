@@ -5,7 +5,13 @@ from jax.typing import ArrayLike
 
 
 def matrix_inverse(R: ArrayLike) -> jax.Array:
-    """Invert rotation matrix.
+    r"""Invert rotation matrix.
+
+    The inverse of a rotation matrix :math:`\boldsymbol{R} \in SO(3)` is its
+    transpose :math:`\boldsymbol{R}^{-1} = \boldsymbol{R}^T` because of the
+    orthonormality constraint
+    :math:`\boldsymbol{R}\boldsymbol{R}^T = \boldsymbol{I}` (see
+    :func:`~norm_matrix`).
 
     Parameters
     ----------
@@ -24,7 +30,13 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
 
 
 def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
-    """Apply rotation matrix to vector.
+    r"""Apply rotation matrix to vector.
+
+    Computes the matrix-vector product
+
+    .. math::
+
+        \boldsymbol{w} = \boldsymbol{R} \boldsymbol{v}.
 
     Parameters
     ----------
@@ -54,7 +66,13 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
 
 
 def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
-    """Compose rotation matrices.
+    r"""Compose rotation matrices.
+
+    Computes the matrix-matrix product
+
+    .. math::
+
+        \boldsymbol{R}_1 \cdot \boldsymbol{R}_2.
 
     Parameters
     ----------
@@ -80,8 +98,6 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
 
     This operation is called logarithmic map. Note that there are two possible
     solutions for the rotation axis when the angle is 180 degrees (pi).
-
-    We usually assume active rotations.
 
     Parameters
     ----------
