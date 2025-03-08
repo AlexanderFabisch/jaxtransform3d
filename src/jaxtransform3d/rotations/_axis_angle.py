@@ -11,9 +11,31 @@ def matrix_from_compact_axis_angle(
     axis: ArrayLike | None = None,
     angle: ArrayLike | None = None,
 ) -> jax.Array:
-    """Compute rotation matrices from compact axis-angle representations.
+    r"""Compute rotation matrices from compact axis-angle representations.
 
     This is called exponential map or Rodrigues' formula.
+
+    Given a compact axis-angle representation (rotation vector)
+    :math:`\hat{\boldsymbol{\omega}} \theta \in \mathbb{R}^3`, we compute
+    the rotation matrix :math:`\boldsymbol{R} \in SO(3)` as
+
+    .. math::
+        :nowrap:
+
+        \begin{eqnarray}
+        \boldsymbol{R}(\hat{\boldsymbol{\omega}} \theta)
+        &=&
+        Exp(\hat{\boldsymbol{\omega}} \theta)\\
+        &=&
+        \cos{\theta} \boldsymbol{I}
+        + \sin{\theta} \left[\hat{\boldsymbol{\omega}}\right]
+        + (1 - \cos{\theta})
+        \hat{\boldsymbol{\omega}}\hat{\boldsymbol{\omega}}^T\\
+        &=&
+        \boldsymbol{I}
+        + \sin{\theta} \left[\hat{\boldsymbol{\omega}}\right]
+        + (1 - \cos{\theta}) \left[\hat{\boldsymbol{\omega}}\right]^2.
+        \end{eqnarray}
 
     Parameters
     ----------
@@ -30,7 +52,7 @@ def matrix_from_compact_axis_angle(
 
     Returns
     -------
-    Rs : array, shape (..., 3, 3)
+    R : array, shape (..., 3, 3)
         Rotation matrices
     """
     axis_angle = jnp.asarray(axis_angle)
