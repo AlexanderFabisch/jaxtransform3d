@@ -3,4 +3,6 @@
 __pycache__
 .coverage
 doc/source/_apidoc
+doc/source/_auto_examples
+doc/source/sg_execution_times.rst
 doc/build
