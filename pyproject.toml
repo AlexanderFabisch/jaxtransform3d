@@ -7,7 +7,6 @@ maintainers = [
     {name = "Alexander Fabisch", email = "afabisch@googlemail.com"},
 ]
 dependencies = [
-    "numpy",
     "jax",
     "chex",
 ]
@@ -28,20 +27,23 @@ classifiers=[
 
 [project.optional-dependencies]
 docs = [
-    "matplotlib",
     "sphinx",
     "sphinx-gallery",
     "numpydoc",
+    "numpy",
+    "matplotlib",
     "pytransform3d",
 ]
 examples = [
     "matplotlib",
+    "numpy",
     "pytransform3d",
 ]
 tests = [
     "pytest",
     "pytest-cov",
     "pytransform3d",
+    "numpy",
     "ruff",
     "black",
     "mypy",
