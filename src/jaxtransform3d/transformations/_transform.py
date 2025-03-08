@@ -121,9 +121,44 @@ def create_transform(R: ArrayLike, t: ArrayLike) -> jax.Array:
 
 
 def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
-    """Compute exponential coordinates from transformation matrix.
+    r"""Compute exponential coordinates from transformation matrix.
 
     This is the logarithm map.
+
+    .. math::
+
+        Log: \boldsymbol{T} \in SE(3)
+        \rightarrow \mathcal{S} \theta \in \mathbb{R}^6
+
+    .. math::
+
+        Log(\boldsymbol{T}) =
+        Log\left(
+        \begin{array}{cc}
+        \boldsymbol{R} & \boldsymbol{p}\\
+        \boldsymbol{0} & 1
+        \end{array}
+        \right)
+        =
+        \left(
+        \begin{array}{c}
+        Log(\boldsymbol{R})\\
+        \boldsymbol{J}^{-1}(\theta) \boldsymbol{p}
+        \end{array}
+        \right)
+        =
+        \left(
+        \begin{array}{c}
+        \hat{\boldsymbol{\omega}}\\
+        \boldsymbol{v}
+        \end{array}
+        \right)
+        \theta
+        =
+        \mathcal{S}\theta,
+
+    where :math:`\boldsymbol{J}^{-1}(\theta)` is the inverse left Jacobian of
+    :math:`SO(3)`.
 
     Parameters
     ----------

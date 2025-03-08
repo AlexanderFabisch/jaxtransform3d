@@ -13,9 +13,32 @@ from ._transform import create_transform
 
 
 def transform_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.Array:
-    """Compute transformation matrix from exponential coordinates.
+    r"""Compute transformation matrix from exponential coordinates.
 
     This is the exponential map.
+
+    .. math::
+
+        Exp: \mathcal{S} \theta \in \mathbb{R}^6
+        \rightarrow \boldsymbol{T} \in SE(3)
+
+    .. math::
+
+        Exp(\mathcal{S}\theta) =
+        Exp\left(\left(\begin{array}{c}
+        \hat{\boldsymbol{\omega}}\\
+        \boldsymbol{v}
+        \end{array}\right)\theta\right)
+        =
+        \exp(\left[\mathcal{S}\right] \theta)
+        =
+        \left(\begin{array}{cc}
+        Exp(\hat{\boldsymbol{\omega}} \theta) &
+        \boldsymbol{J}(\theta)\boldsymbol{v}\theta\\
+        \boldsymbol{0} & 1
+        \end{array}\right),
+
+    where :math:`\boldsymbol{J}(\theta)` is the left Jacobian of :math:`SO(3)`.
 
     Parameters
     ----------
