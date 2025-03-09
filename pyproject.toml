@@ -106,11 +106,3 @@ ignore=[
 
 [tool.ruff.format]
 quote-style = "double"
-
-[tool.pytest.ini_options]
-# for more details on configuration, see
-# https://github.com/pytest-dev/pytest-cov/tree/4732d50f2322a6e0ea480a6c400fbc96f78283bb/examples/src-layout
-norecursedirs = [".git", ".venv", "dist"]
-python_files = ["test_*.py"]
-testpaths = ["src/jaxtransform3d/**/test"]
-addopts = "--cov-config=.coveragerc --cov=jaxtransform3d --cov-report html"

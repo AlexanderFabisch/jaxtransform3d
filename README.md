@@ -40,7 +40,7 @@ cd doc/
 make html
 ```
 
-Run doctests:
+Run only doctests:
 
 ```bash
 cd doc/
