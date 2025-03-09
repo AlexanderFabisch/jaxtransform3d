@@ -100,6 +100,21 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     -------
     w : array, shape (..., 3) or (3,)
         3d vector.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import (
+    ...    apply_matrix, matrix_from_compact_axis_angle)
+    >>> a = jnp.array([[0.5 * jnp.pi, 0.0, 0.0],
+    ...                [0.0, 0.5 * jnp.pi, 0.0]])
+    >>> R = matrix_from_compact_axis_angle(a)
+    >>> v = jnp.array([[0.5, 1.0, 2.5], [1, 2, 3]])
+    >>> apply_matrix(R[0], v[0]).round(7)
+    Array([ 0.5..., -2.5...,  0.9999...], ...)
+    >>> apply_matrix(R, v)
+    Array([[ 0.49999997, -2.5       ,  0.9999999 ],
+           [ 3.        ,  1.9999999 , -1.0000001 ]], dtype=float32)
     """
     R = jnp.asarray(R)
     v = jnp.asarray(v)
@@ -136,6 +151,20 @@ def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
     -------
     R1_R2 : array, shape (..., 3, 3) or (3, 3)
         Composed rotation matrix.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import (
+    ...    compose_matrices, matrix_from_compact_axis_angle)
+    >>> a1 = jnp.array([0.5 * jnp.pi, 0.0, 0.0])
+    >>> R1 = matrix_from_compact_axis_angle(a1)
+    >>> a2 = jnp.array([0.0, 0.5 * jnp.pi, 0.0])
+    >>> R2 = matrix_from_compact_axis_angle(a2)
+    >>> compose_matrices(R1, R2).round(6)
+    Array([[...0., ...0., ...1.],
+           [...1., ...0., ...0.],
+           [...0., ...1., ...0.]], ...)
     """
     R1 = jnp.asarray(R1)
     R2 = jnp.asarray(R2)
