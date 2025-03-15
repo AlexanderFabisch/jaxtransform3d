@@ -54,6 +54,27 @@ def matrix_from_compact_axis_angle(
     -------
     R : array, shape (..., 3, 3)
         Rotation matrices
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import matrix_from_compact_axis_angle
+    >>> matrix_from_compact_axis_angle(jnp.zeros(3))
+    Array([[1., 0., 0.],
+           [0., 1., 0.],
+           [0., 0., 1.]], dtype=...)
+    >>> import jax
+    >>> a = jax.random.normal(jax.random.PRNGKey(42), shape=(2, 3))
+    >>> a
+    Array([[-0.02830462,  0.46713185,  0.29570296],
+           [ 0.15354592, -0.12403282,  0.21692315]], dtype=...)
+    >>> matrix_from_compact_axis_angle(a)
+    Array([[[ 0.8510371 , -0.2872734 ,  0.43955666],
+            [ 0.27438563,  0.95699465,  0.09420117],
+            [-0.44771487,  0.0404393 ,  0.89326155]],
+           [[ 0.96900326, -0.22328097, -0.10572752],
+            [ 0.20437238,  0.96493644, -0.16471078],
+            [ 0.1387971 ,  0.1379975 ,  0.980659  ]]], dtype=...)
     """
     axis_angle = jnp.asarray(axis_angle)
     if not jnp.issubdtype(axis_angle.dtype, jnp.floating):
@@ -110,6 +131,21 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     -------
     q : array, shape (4,)
         Unit quaternion to represent rotation: (w, x, y, z)
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import quaternion_from_compact_axis_angle
+    >>> quaternion_from_compact_axis_angle(jnp.zeros(3))
+    Array([1., 0., 0., 0.], dtype=...)
+    >>> import jax
+    >>> a = jax.random.normal(jax.random.PRNGKey(42), shape=(2, 3))
+    >>> a
+    Array([[-0.02830462,  0.46713185,  0.29570296],
+           [ 0.15354592, -0.12403282,  0.21692315]], dtype=...)
+    >>> quaternion_from_compact_axis_angle(a)
+    Array([[ 0.96193725, -0.01397229,  0.23059493,  0.14597079],
+           [ 0.98926723,  0.0764981 , -0.06179438,  0.10807326]], ...)
     """
     axis_angle = jnp.asarray(axis_angle)
 
