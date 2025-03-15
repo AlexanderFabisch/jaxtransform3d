@@ -188,6 +188,16 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     a : array, shape (..., 3)
         Axis of rotation and rotation angle: angle * (x, y, z). The angle is
         constrained to [0, pi].
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import compact_axis_angle_from_matrix
+    >>> compact_axis_angle_from_matrix(jnp.eye(3))
+    Array([0., 0., 0.], dtype=...)
+    >>> compact_axis_angle_from_matrix(
+    ...     jnp.array([[0., 0., -1.], [0., 1., 0.], [1., 0., 0.]]))
+    Array([ 0..., -1.57...,  0...], dtype=...)
     """
     R = jnp.asarray(R)
     if not jnp.issubdtype(R.dtype, jnp.floating):
