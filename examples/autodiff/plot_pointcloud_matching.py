@@ -28,6 +28,8 @@ def error(exp_coords_BA):
 
 def error_vmap(x):
     return jax.vmap(error, in_axes=(0,))(x).sum()
+
+
 error_with_grad = jax.jit(jax.value_and_grad(error_vmap))
 
 exp_coords_BA = jnp.asarray(rng.normal(size=(4, 6)))
