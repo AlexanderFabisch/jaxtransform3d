@@ -1,0 +1,6 @@
+﻿jaxtransform3d.rotations.quaternion\_from\_compact\_axis\_angle
+===============================================================
+
+.. currentmodule:: jaxtransform3d.rotations
+
+.. autofunction:: quaternion_from_compact_axis_angle

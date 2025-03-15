@@ -1,0 +1,6 @@
+﻿jaxtransform3d.transformations.compose\_dual\_quaternions
+=========================================================
+
+.. currentmodule:: jaxtransform3d.transformations
+
+.. autofunction:: compose_dual_quaternions

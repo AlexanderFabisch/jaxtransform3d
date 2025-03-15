@@ -1,0 +1,6 @@
+﻿jaxtransform3d.rotations.compose\_matrices
+==========================================
+
+.. currentmodule:: jaxtransform3d.rotations
+
+.. autofunction:: compose_matrices

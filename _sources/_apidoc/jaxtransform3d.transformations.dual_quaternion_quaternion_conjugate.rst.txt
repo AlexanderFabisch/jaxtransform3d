@@ -1,0 +1,6 @@
+﻿jaxtransform3d.transformations.dual\_quaternion\_quaternion\_conjugate
+======================================================================
+
+.. currentmodule:: jaxtransform3d.transformations
+
+.. autofunction:: dual_quaternion_quaternion_conjugate

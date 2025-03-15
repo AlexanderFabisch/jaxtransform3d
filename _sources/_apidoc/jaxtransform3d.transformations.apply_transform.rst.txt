@@ -1,0 +1,6 @@
+﻿jaxtransform3d.transformations.apply\_transform
+===============================================
+
+.. currentmodule:: jaxtransform3d.transformations
+
+.. autofunction:: apply_transform

@@ -1,0 +1,6 @@
+﻿jaxtransform3d.rotations.robust\_polar\_decomposition
+=====================================================
+
+.. currentmodule:: jaxtransform3d.rotations
+
+.. autofunction:: robust_polar_decomposition

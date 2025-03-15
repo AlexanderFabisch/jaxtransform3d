@@ -1,0 +1,6 @@
+﻿jaxtransform3d.rotations.matrix\_inverse
+========================================
+
+.. currentmodule:: jaxtransform3d.rotations
+
+.. autofunction:: matrix_inverse

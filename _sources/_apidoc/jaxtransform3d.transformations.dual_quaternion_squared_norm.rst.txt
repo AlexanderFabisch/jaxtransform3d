@@ -1,0 +1,6 @@
+﻿jaxtransform3d.transformations.dual\_quaternion\_squared\_norm
+==============================================================
+
+.. currentmodule:: jaxtransform3d.transformations
+
+.. autofunction:: dual_quaternion_squared_norm

@@ -1,0 +1,6 @@
+﻿jaxtransform3d.transformations.transform\_inverse
+=================================================
+
+.. currentmodule:: jaxtransform3d.transformations
+
+.. autofunction:: transform_inverse

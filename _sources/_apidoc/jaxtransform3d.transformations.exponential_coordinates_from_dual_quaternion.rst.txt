@@ -1,0 +1,6 @@
+﻿jaxtransform3d.transformations.exponential\_coordinates\_from\_dual\_quaternion
+===============================================================================
+
+.. currentmodule:: jaxtransform3d.transformations
+
+.. autofunction:: exponential_coordinates_from_dual_quaternion

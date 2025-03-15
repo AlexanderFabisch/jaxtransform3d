@@ -1,0 +1,6 @@
+﻿jaxtransform3d.rotations.quaternion\_conjugate
+==============================================
+
+.. currentmodule:: jaxtransform3d.rotations
+
+.. autofunction:: quaternion_conjugate

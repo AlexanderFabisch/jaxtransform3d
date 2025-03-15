@@ -1,0 +1,6 @@
+﻿jaxtransform3d.rotations.norm\_matrix
+=====================================
+
+.. currentmodule:: jaxtransform3d.rotations
+
+.. autofunction:: norm_matrix

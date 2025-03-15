@@ -1,0 +1,6 @@
+﻿jaxtransform3d.transformations.exponential\_coordinates\_from\_transform
+========================================================================
+
+.. currentmodule:: jaxtransform3d.transformations
+
+.. autofunction:: exponential_coordinates_from_transform

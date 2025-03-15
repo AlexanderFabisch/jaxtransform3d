@@ -1,0 +1,6 @@
+﻿jaxtransform3d.rotations.norm\_quaternion
+=========================================
+
+.. currentmodule:: jaxtransform3d.rotations
+
+.. autofunction:: norm_quaternion
