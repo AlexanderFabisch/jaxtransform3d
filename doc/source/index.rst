@@ -16,6 +16,17 @@ https://github.com/dfki-ric/pytransform3d
 that is JIT-compiled, executable on GPU, differentiable, and inherently
 vectorized.
 
+**Why should it be inherently vectorized?**
+
+The decision is not final yet. As long as it is not too complicated to write
+the code to accept any-dimensional input arrays I will do it. There are only a
+few exceptions: rotation matrix normalization methods only accept one rotation
+matrix. If it gets to complicated or I see significant performance issues
+in comparison to vmapping the code, I will abandon this idea. The advantage
+over using vmap is that I don't have to call vmap multiple times when I want
+to vectorize multiple times (e.g., a list of a list of a list of rotation
+matrices).
+
 --------
 Citation
 --------
