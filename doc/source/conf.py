@@ -28,8 +28,12 @@ templates_path = ['_templates']
 exclude_patterns = []
 
 # theme
+html_logo = "_static/logo.png"
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
+    "logo": {
+        "alt_text": f"pytransform3d {release}",
+    },
     "collapse_navigation": True,
 }
 html_static_path = ["_static"]
