@@ -26,7 +26,8 @@ def error(exp_coords_BA):
     return jnp.mean(jnp.linalg.norm(pointcloud_B - pointcloud_B_expected, axis=1))
 
 
-error_vmap = lambda x: jax.vmap(error, in_axes=(0,))(x).sum()
+def error_vmap(x):
+    return jax.vmap(error, in_axes=(0,))(x).sum()
 error_with_grad = jax.jit(jax.value_and_grad(error_vmap))
 
 exp_coords_BA = jnp.asarray(rng.normal(size=(4, 6)))
@@ -48,7 +49,7 @@ axes = [
     plt.subplot(2, len(exp_coords_BA) // 2, 1 + i, projection="3d")
     for i in range(len(exp_coords_BA))
 ]
-for ax, T_BA_estimated_i in zip(axes, T_BA_estimated):
+for ax, T_BA_estimated_i in zip(axes, T_BA_estimated, strict=False):
     pointcloud_B_estimated = jt.apply_transform(T_BA_estimated_i, pointcloud_A)
     ax.scatter(
         pointcloud_A[:, 0],

@@ -49,7 +49,7 @@ for ax in axes.flat:
     ax.set_zlim(-ax_s, ax_s)
 
 titles = ["Unnormalized Bases", "Gram-Schmidt", "Polar Decomposition"]
-for ax, title in zip(axes[:, 0], titles):
+for ax, title in zip(axes[:, 0], titles, strict=False):
     ax.set_title(title)
 
 rng = np.random.default_rng(46)

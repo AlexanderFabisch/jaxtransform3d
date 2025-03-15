@@ -6,12 +6,11 @@ Find Similar Rotation
 """
 
 import jax
-
-import jaxtransform3d.rotations as jr
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 import pytransform3d.rotations as pr
 
+import jaxtransform3d.rotations as jr
 
 rng = np.random.default_rng(20)
 q_true = jnp.asarray(pr.random_quaternion(rng))

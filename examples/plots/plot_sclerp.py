@@ -6,13 +6,13 @@ Screw Linear Interpolation
 This example shows interpolated trajectories between two random poses.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-import pytransform3d.transformations as pt
-import pytransform3d.trajectories as ptr
+import numpy as np
 import pytransform3d.plot_utils as ppu
-import jaxtransform3d.transformations as jt
+import pytransform3d.trajectories as ptr
+import pytransform3d.transformations as pt
 
+import jaxtransform3d.transformations as jt
 
 # %%
 # Setup
