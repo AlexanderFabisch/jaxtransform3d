@@ -18,6 +18,13 @@ def norm_quaternion(q: ArrayLike) -> jax.Array:
     -------
     q_norm : array, shape (..., 4)
         Normalized quaternion.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import norm_quaternion
+    >>> norm_quaternion(jnp.array([2., 0., 0., 0.]))
+    Array([1., 0., 0., 0.], dtype=...)
     """
     q = jnp.asarray(q)
     if not jnp.issubdtype(q.dtype, jnp.floating):
@@ -63,6 +70,23 @@ def compose_quaternions(q1: ArrayLike, q2: ArrayLike) -> jax.Array:
     q12 : array, shape (..., 4)
         Quaternion that represents the concatenated rotation
         :math:`\boldsymbol{q}_1\boldsymbol{q}_2`.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import compose_quaternions
+    >>> compose_quaternions(jnp.array([1., 0., 0., 0.]),
+    ...                     jnp.array([0., 1., 0., 0.]))
+    Array([0., 1., 0., 0.], dtype=...)
+    >>> compose_quaternions(jnp.array([0., 1., 0., 0.]),
+    ...                     jnp.array([0., 0., 1., 0.]))
+    Array([0., 0., 0., 1.], dtype=...)
+    >>> compose_quaternions(jnp.array([0., 0., 1., 0.]),
+    ...                     jnp.array([0., 0., 0., 1.]))
+    Array([0., 1., 0., 0.], dtype=...)
+    >>> compose_quaternions(jnp.array([0., 0., 0., 1.]),
+    ...                     jnp.array([0., 0., 0., 1.]))
+    Array([-1., 0., 0., 0.], dtype=...)
     """
     q1 = jnp.asarray(q1)
     if not jnp.issubdtype(q1.dtype, jnp.floating):
@@ -110,6 +134,13 @@ def quaternion_conjugate(q: ArrayLike) -> jax.Array:
     -------
     q_c : array-like, shape (..., 4)
         Conjugate (w, -x, -y, -z).
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import quaternion_conjugate
+    >>> quaternion_conjugate(jnp.array([4., 2., 1., 3.]))
+    Array([ 4., -2., -1., -3.], dtype=...)
     """
     q = jnp.asarray(q)
     if not jnp.issubdtype(q.dtype, jnp.floating):
@@ -158,6 +189,13 @@ def apply_quaternion(q: ArrayLike, v: ArrayLike) -> jax.Array:
     -------
     w : array, shape (..., 3)
         3d vector
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import apply_quaternion
+    >>> apply_quaternion(jnp.array([0., 1., 0., 0.]), jnp.array([1., 2., 3.]))
+    Array([ 1., -2., -3.], dtype=...)
     """
     q = jnp.asarray(q)
     if not jnp.issubdtype(q.dtype, jnp.floating):
@@ -189,6 +227,13 @@ def compact_axis_angle_from_quaternion(q: ArrayLike) -> jax.Array:
     a : array, shape (..., 3)
         Axis of rotation and rotation angle: angle * (x, y, z). The angle is
         constrained to [0, pi) so that the mapping is unique.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import compact_axis_angle_from_quaternion
+    >>> compact_axis_angle_from_quaternion(jnp.array([1., 0., 0., 0.]))
+    Array([0., 0., 0.], dtype=...)
     """
     q = jnp.asarray(q)
     if not jnp.issubdtype(q.dtype, jnp.floating):
