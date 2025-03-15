@@ -49,6 +49,15 @@ def norm_matrix(R: ArrayLike) -> jax.Array:
     robust_polar_decomposition
         A more expensive orthonormalization method that spreads the error more
         evenly between the basis vectors.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import norm_matrix
+    >>> norm_matrix(jnp.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5]]))
+    Array([[1., 0., 0.],
+           [0., 1., 0.],
+           [0., 0., 1.]], dtype=float32)
     """
     R = jnp.asarray(R)
 
@@ -114,6 +123,16 @@ def robust_polar_decomposition(
        A Robust Method to Extract the Rotational Part of Deformations.
        In MIG '16: Proceedings of the 9th International Conference on Motion in
        Games, pp. 55-60, doi: 10.1145/2994258.2994269.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import robust_polar_decomposition
+    >>> robust_polar_decomposition(
+    ...     jnp.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5]]))
+    Array([[1., 0., 0.],
+           [0., 1., 0.],
+           [0., 0., 1.]], dtype=float32)
     """
     A = jnp.asarray(A)
 
