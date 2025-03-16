@@ -1,9 +1,12 @@
 """
-=======================
-Product of Exponentials
-=======================
+==============================================
+Inverse Kinematics and Product of Exponentials
+==============================================
 
-We compute the inverse kinematics of a robot and visualize it.
+We compute the inverse kinematics of a robot and visualize it. We use JAX'
+automatic differentiation to compute the Jacobian of a robot based on the
+Product of Exponentials formulation of forward kinematics. The inverse
+kinematics solver uses the Jacobian's pseudo-inverse.
 """
 
 import os
@@ -19,27 +22,15 @@ from pytransform3d.urdf import UrdfTransformManager
 
 import jaxtransform3d.transformations as jt
 
+
 # %%
-# Robot Kinematics
-# ----------------
-#
-# The end-effector's pose distribution is computed based on the Product of
-# Exponentials POE.
+# Forward Kinematics
+# ------------------
+# The end-effector's pose is computed based on the Product of Exponentials.
 #
 # The complicated part of this example is the conversion of kinematics
 # parameters from URDF data to screw axes that are needed for the product
 # of exponentials formulation of forward kinematics.
-#
-# Once we have this information, the implementation of the product of
-# exponentials is straightforward:
-#
-# 1. We multiply the screw axis of each joint with the corresponding joint
-#    angle to obtain the exponential coordinates of each relative joint
-#    displacement.
-# 2. We concatenate the relative joint displacements and the base pose to
-#    obtain the end-effector's pose.
-
-
 def get_screw_axes(
     robot_urdf,
     ee_frame,
@@ -118,6 +109,15 @@ def get_screw_axes(
     return tm, jnp.asarray(ee2base_home), jnp.asarray(screw_axes_home), joint_limits
 
 
+# %%
+# Once we have this information, the implementation of the product of
+# exponentials is straightforward:
+#
+# 1. We multiply the screw axis of each joint with the corresponding joint
+#    angle to obtain the exponential coordinates of each relative joint
+#    displacement.
+# 2. We concatenate the relative joint displacements and the base pose to
+#    obtain the end-effector's pose.
 def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas):
     """Compute probabilistic forward kinematics.
 
@@ -160,7 +160,14 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
 
 
 # %%
-# Then we define a callback to animate the visualization.
+# Inverse Kinematics Solver
+# -------------------------
+# We define a callback to animate the visualization. At the beginning of each
+# animation, we sample a random goal.
+# In each frame, we compute one step of the numerical inverse kinematics
+# solver. We use the Jacobian pseudo-inverse to reduce the pose error. In
+# addition, we perform a null-space projection to avoid getting close to the
+# joint limits.
 def animation_callback(step, tm, graph, target_frame, joint_names):
     global key, target, thetas
 
@@ -215,7 +222,7 @@ tm, ee2base_home, screw_axes_home, joint_limits = get_screw_axes(
 )
 
 # %%
-# define the Jacobian,
+# define the Jacobian with JAX,
 forward = jax.jit(
     partial(
         product_of_exponentials,
