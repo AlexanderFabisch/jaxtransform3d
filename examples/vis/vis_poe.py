@@ -174,16 +174,18 @@ def animation_callback(
     if step == 0:
         key, sampling_key = jax.random.split(key, 2)
         current_exp_coords = forward(thetas)
-        exp_coords = 0.9 * current_exp_coords + 0.1 * jax.random.normal(sampling_key, shape=(6,))
+        exp_coords = 0.9 * current_exp_coords + jnp.array([0.5] * 3 + [0.1] * 3) * jax.random.normal(sampling_key, shape=(6,))
         target = jt.transform_from_exponential_coordinates(exp_coords)
         target_frame.set_data(A2B=target)
 
+    # details: https://www.cs.cmu.edu/~15464-s13/lectures/lecture6/iksurvey.pdf
     J = jac(thetas)
+    J_inv = jnp.linalg.pinv(J)
     error = jt.exponential_coordinates_from_transform(target) - forward(thetas)
-    new_thetas = thetas + 0.2 * jnp.linalg.pinv(J) @ error
+    new_thetas = thetas + 0.2 * J_inv @ error + 0.05 * (jnp.eye(len(thetas)) - J_inv @ J) @ -thetas
     if not jnp.any(jnp.isnan(new_thetas)):
-        thetas = new_thetas
-    print(error)
+        thetas = jnp.clip(new_thetas, joint_limits[:, 0], joint_limits[:, 1])
+    print(thetas)
 
     for joint_name, value in zip(joint_names, thetas):
         tm.set_joint(joint_name, value)
