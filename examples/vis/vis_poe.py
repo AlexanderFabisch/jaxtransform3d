@@ -7,12 +7,12 @@ We compute the forward kinematics of a robot and visualize it.
 """
 
 import os
+from functools import partial
 
 import chex
 import jax.numpy as jnp
 import jax.random
 import numpy as np
-import open3d as o3d
 
 import pytransform3d.transformations as pt
 import pytransform3d.visualizer as pv
@@ -123,22 +123,13 @@ def get_screw_axes(
     return tm, ee2base_home, screw_axes_home, joint_limits
 
 
-def product_of_exponentials(thetas, ee2base_home, screw_axes_home, joint_limits):
+def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas):
     """Compute probabilistic forward kinematics.
 
     This is based on the probabilistic product of exponentials.
 
     Parameters
     ----------
-    thetas : array, shape (n_joints,)
-        A list of joint coordinates.
-
-    Returns
-    -------
-    ee2base : array, shape (4, 4)
-        A homogeneous transformation matrix representing the end-effector
-        frame when the joints are at the specified coordinates.
-
     ee2base_home : array, shape (4, 4)
         The home configuration (position and orientation) of the
         end-effector.
@@ -150,6 +141,14 @@ def product_of_exponentials(thetas, ee2base_home, screw_axes_home, joint_limits)
     joint_limits : array, shape (n_joints, 2)
         Joint limits: joint_limits[:, 0] contains the minimum values and
         joint_limits[:, 1] contains the maximum values.
+
+    thetas : array, shape (n_joints,)
+        A list of joint coordinates.
+
+    Returns
+    -------
+    ee2base : array, shape (6,)
+        TODO
     """
     chex.assert_equal_shape_prefix((screw_axes_home, thetas), prefix_len=1)
 
@@ -162,18 +161,7 @@ def product_of_exponentials(thetas, ee2base_home, screw_axes_home, joint_limits)
         T = T @ joint_displacement
     T = T @ ee2base_home
 
-    return T
-
-
-def pose_error(thetas, desired):
-    actual = product_of_exponentials(thetas, ee2base_home, screw_axes_home, joint_limits)
-    return jnp.linalg.norm(
-        jt.exponential_coordinates_from_transform(
-            jt.transform_inverse(desired) @ actual
-        )
-    )
-
-pose_grad = jax.jit(jax.grad(pose_error, argnums=(0,)))
+    return jt.exponential_coordinates_from_transform(T)
 
 
 # %%
@@ -190,7 +178,7 @@ def animation_callback(
     key, sampling_key = jax.random.split(key, 2)
     exp_coords = jax.random.normal(sampling_key, shape=(6,))
     desired = jt.transform_from_exponential_coordinates(exp_coords)
-    T = product_of_exponentials(thetas_t, ee2base_home, screw_axes_home, joint_limits)
+    exp_coords = product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas_t)
 
     return graph
 
@@ -233,7 +221,10 @@ key = jax.random.PRNGKey(42)
 #
 # Then we can finally use PPOE to compute the end-effector pose and its
 # covariance.
-T = product_of_exponentials(current_thetas, ee2base_home, screw_axes_home, joint_limits)
+exp_coords = product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, current_thetas)
+jac = jax.jacobian(partial(product_of_exponentials, ee2base_home, screw_axes_home, joint_limits))
+print(jac(jnp.asarray(thetas, dtype=jnp.float32)))
+exit()
 
 # %%
 # The following code visualizes the result.
