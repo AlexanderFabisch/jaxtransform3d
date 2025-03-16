@@ -173,13 +173,19 @@ def animation_callback(
 
     if step == 0:
         key, sampling_key = jax.random.split(key, 2)
-        exp_coords = jax.random.normal(sampling_key, shape=(6,))
+        current_exp_coords = forward(thetas)
+        exp_coords = 0.9 * current_exp_coords + 0.1 * jax.random.normal(sampling_key, shape=(6,))
         target = jt.transform_from_exponential_coordinates(exp_coords)
         target_frame.set_data(A2B=target)
 
-    #J = jac(thetas)
-    #error = jt.exponential_coordinates_from_transform(target) - forward(thetas)
-    #thetas = thetas - jnp.linalg.pinv(J) * error
+    J = jac(thetas)
+    error = jt.exponential_coordinates_from_transform(target) - forward(thetas)
+    error = jnp.clip(error, -0.5, 0.5)
+    new_thetas = thetas + 0.05 * jnp.linalg.pinv(J) @ error
+    if not jnp.any(jnp.isnan(new_thetas)):
+        thetas = new_thetas
+    print(error)
+    print(thetas)
 
     for joint_name, value in zip(joint_names, thetas):
         tm.set_joint(joint_name, value)
@@ -226,7 +232,7 @@ jac = jax.jit(jax.jacobian(forward))
 
 # %%
 # and define the joint angles.
-thetas = -0.5 * jnp.array([1, 1, 1, 0, 1, 0])
+thetas = -0.5 * jnp.ones(6)
 for joint_name, theta in zip(joint_names, thetas):
     tm.set_joint(joint_name, theta)
 key = jax.random.PRNGKey(42)
@@ -238,7 +244,7 @@ graph = fig.plot_graph(tm, "robot_arm", show_visuals=True)
 target = jnp.zeros(6)
 target_frame = fig.plot_transform(np.eye(4), s=0.3)
 fig.view_init(elev=5, azim=50)
-n_frames = 10
+n_frames = 100
 if "__file__" in globals():
     fig.animate(
         animation_callback,
