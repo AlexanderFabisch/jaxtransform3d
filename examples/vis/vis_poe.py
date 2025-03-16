@@ -180,12 +180,10 @@ def animation_callback(
 
     J = jac(thetas)
     error = jt.exponential_coordinates_from_transform(target) - forward(thetas)
-    error = jnp.clip(error, -0.5, 0.5)
     new_thetas = thetas + 0.2 * jnp.linalg.pinv(J) @ error
     if not jnp.any(jnp.isnan(new_thetas)):
         thetas = new_thetas
     print(error)
-    print(thetas)
 
     for joint_name, value in zip(joint_names, thetas):
         tm.set_joint(joint_name, value)
