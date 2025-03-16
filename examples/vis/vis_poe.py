@@ -3,7 +3,7 @@
 Product of Exponentials
 =======================
 
-We compute the forward kinematics of a robot and visualize it.
+We compute the inverse kinematics of a robot and visualize it.
 """
 
 import os
@@ -92,10 +92,10 @@ def get_screw_axes(
         Joint limits: joint_limits[:, 0] contains the minimum values and
         joint_limits[:, 1] contains the maximum values.
     """
-    tm = UrdfTransformManager(check=False)
+    tm = UrdfTransformManager()
     tm.load_urdf(robot_urdf, mesh_path=mesh_path, package_dir=package_dir)
 
-    ee2base_home = jnp.asarray(tm.get_transform(ee_frame, base_frame))
+    ee2base_home = tm.get_transform(ee_frame, base_frame)
     screw_axes_home = []
     for jn in joint_names:
         ln, _, _, s_axis, limits, joint_type = tm._joints[jn]
@@ -114,13 +114,13 @@ def get_screw_axes(
 
         screw_axis = pt.screw_axis_from_screw_parameters(q, s_axis, h)
         screw_axes_home.append(screw_axis)
-    screw_axes_home = jnp.stack(screw_axes_home, axis=1)
+    screw_axes_home = np.vstack(screw_axes_home)
 
     joint_limits = jnp.array(
         [tm.get_joint_limits(jn) for jn in joint_names]
     )
 
-    return tm, ee2base_home, screw_axes_home, joint_limits
+    return tm, jnp.asarray(ee2base_home), jnp.asarray(screw_axes_home), joint_limits
 
 
 def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas):
@@ -148,7 +148,7 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
     Returns
     -------
     ee2base : array, shape (6,)
-        TODO
+        Exponential coordinates of transformation from end-effector to base.
     """
     chex.assert_equal_shape_prefix((screw_axes_home, thetas), prefix_len=1)
 
@@ -167,20 +167,25 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
 # %%
 # Then we define a callback to animate the visualization.
 def animation_callback(
-    step, n_frames, tm, graph, joint_names, thetas, key
+    step, tm, graph, target_frame, joint_names
 ):
-    angle = 0.5 * np.cos(2.0 * np.pi * (0.5 + step / n_frames))
-    thetas_t = angle * thetas
-    for joint_name, value in zip(joint_names, thetas_t):
+    global key, target, thetas
+
+    if step == 0:
+        key, sampling_key = jax.random.split(key, 2)
+        exp_coords = jax.random.normal(sampling_key, shape=(6,))
+        target = jt.transform_from_exponential_coordinates(exp_coords)
+        target_frame.set_data(A2B=target)
+
+    #J = jac(thetas)
+    #error = jt.exponential_coordinates_from_transform(target) - forward(thetas)
+    #thetas = thetas - jnp.linalg.pinv(J) * error
+
+    for joint_name, value in zip(joint_names, thetas):
         tm.set_joint(joint_name, value)
     graph.set_data()
 
-    key, sampling_key = jax.random.split(key, 2)
-    exp_coords = jax.random.normal(sampling_key, shape=(6,))
-    desired = jt.transform_from_exponential_coordinates(exp_coords)
-    exp_coords = product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas_t)
-
-    return graph
+    return graph, target_frame
 
 
 # %%
@@ -208,37 +213,38 @@ tm, ee2base_home, screw_axes_home, joint_limits = get_screw_axes(
 )
 
 # %%
-# define the joint angles,
-thetas = np.array([1, 1, 1, 0, 1, 0])
-current_thetas = -0.5 * thetas
-for joint_name, theta in zip(joint_names, current_thetas):
-    tm.set_joint(joint_name, theta)
-key = jax.random.PRNGKey(42)
+# define the Jacobian,
+forward = jax.jit(
+    partial(
+        product_of_exponentials,
+        ee2base_home,
+        screw_axes_home,
+        joint_limits,
+    )
+)
+jac = jax.jit(jax.jacobian(forward))
 
 # %%
-# PPOE and Visualization
-# ----------------------
-#
-# Then we can finally use PPOE to compute the end-effector pose and its
-# covariance.
-exp_coords = product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, current_thetas)
-jac = jax.jacobian(partial(product_of_exponentials, ee2base_home, screw_axes_home, joint_limits))
-print(jac(jnp.asarray(thetas, dtype=jnp.float32)))
-exit()
+# and define the joint angles.
+thetas = -0.5 * jnp.array([1, 1, 1, 0, 1, 0])
+for joint_name, theta in zip(joint_names, thetas):
+    tm.set_joint(joint_name, theta)
+key = jax.random.PRNGKey(42)
 
 # %%
 # The following code visualizes the result.
 fig = pv.figure()
 graph = fig.plot_graph(tm, "robot_arm", show_visuals=True)
-fig.plot_transform(np.eye(4), s=0.3)
+target = jnp.zeros(6)
+target_frame = fig.plot_transform(np.eye(4), s=0.3)
 fig.view_init(elev=5, azim=50)
-n_frames = 200
+n_frames = 10
 if "__file__" in globals():
     fig.animate(
         animation_callback,
         n_frames,
         loop=True,
-        fargs=(n_frames, tm, graph, joint_names, thetas, key),
+        fargs=(tm, graph, target_frame, joint_names),
     )
     fig.show()
 else:
