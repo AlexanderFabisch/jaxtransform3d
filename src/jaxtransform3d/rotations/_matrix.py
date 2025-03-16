@@ -3,6 +3,8 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
+from ..utils import norm_vector
+
 
 def matrix_inverse(R: ArrayLike) -> jax.Array:
     r"""Invert rotation matrix.
@@ -226,7 +228,7 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     axis = jnp.where(
         angle_close_to_pi[:, jnp.newaxis], axis_close_to_pi, axis_unnormalized
     )
-    axis = axis / jnp.linalg.norm(axis, axis=-1)[..., jnp.newaxis]
+    axis = norm_vector(axis)
 
     angle_nonzero = angle != 0.0
     axis = jnp.where(angle_nonzero[:, jnp.newaxis], axis, 0.0)
