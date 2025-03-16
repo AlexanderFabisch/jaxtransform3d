@@ -63,9 +63,9 @@
       <material name="Orange"/>
     </visual>
     <visual>
-      <origin xyz="0 0.173 0" rpy="1.570796 0 0"/>
+      <origin xyz="0 0.1 0" rpy="1.570796 0 0"/>
       <geometry>
-        <cylinder radius="0.05" length="0.346"/>
+        <cylinder radius="0.05" length="0.2"/>
       </geometry>
       <material name="Black"/>
     </visual>
@@ -120,7 +120,7 @@
 </joint>
 
 <joint name="joint6" type="revolute">
-  <origin xyz="0 0.346 0" rpy="-1.570796 0 0"/>
+  <origin xyz="0 0.2 0" rpy="-1.570796 0 0"/>
   <parent link="link5"/>
   <child link="link6"/>
   <axis xyz="0 0 1.0"/>
