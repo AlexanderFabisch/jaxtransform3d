@@ -3,8 +3,12 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..rotations import apply_matrix, compact_axis_angle_from_matrix, matrix_inverse
-from ..utils import norm_vector
+from ..rotations import (
+    apply_matrix,
+    compact_axis_angle_from_matrix,
+    left_jacobian_SO3_inv,
+    matrix_inverse,
+)
 
 
 def transform_inverse(T: ArrayLike) -> jax.Array:
@@ -204,18 +208,10 @@ def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
     R = T[..., :3, :3]
     t = T[..., :3, 3]
 
-    # TODO stable solution:
-    # https://github.com/dfki-ric/pytransform3d/blob/main/pytransform3d/transformations/_transform.py#L314
-    # https://github.com/dfki-ric/pytransform3d/blob/main/pytransform3d/rotations/_jacobians.py#L84
-    # https://github.com/dfki-ric/pytransform3d/blob/main/pytransform3d/rotations/_jacobians.py#L127
-
     axis_angle = compact_axis_angle_from_matrix(R)
+    v_theta = (left_jacobian_SO3_inv(axis_angle) @ t[..., jnp.newaxis])[..., 0]
 
-    angle = jnp.linalg.norm(axis_angle, axis=-1)
-    axis = norm_vector(axis_angle, norm=angle)
-    v = _v(axis, angle, t)
-
-    return jnp.concatenate((axis_angle, v), axis=-1)
+    return jnp.concatenate((axis_angle, v_theta), axis=-1)
 
 
 def _v(axis: jax.Array, angle: jax.Array, t: jax.Array) -> jax.Array:
