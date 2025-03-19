@@ -6,10 +6,9 @@ from jax.typing import ArrayLike
 from ..rotations import (
     compact_axis_angle_from_quaternion,
     compose_quaternions,
+    left_jacobian_SO3_inv,
     quaternion_conjugate,
 )
-from ..utils import norm_vector
-from ._transform import _v
 
 
 def norm_dual_quaternion(dual_quat):
@@ -252,11 +251,9 @@ def exponential_coordinates_from_dual_quaternion(dual_quat: ArrayLike) -> jax.Ar
     real = dual_quat[..., :4]
     dual = dual_quat[..., 4:]
 
-    t = 2.0 * compose_quaternions(dual, quaternion_conjugate(real))[..., 1:]
     axis_angle = compact_axis_angle_from_quaternion(real)
 
-    angle = jnp.linalg.norm(axis_angle, axis=-1)
-    axis = norm_vector(axis_angle, norm=angle)
-    v = _v(axis, angle, t)
+    t = 2.0 * compose_quaternions(dual, quaternion_conjugate(real))[..., 1:]
+    v_theta = (left_jacobian_SO3_inv(axis_angle) @ t[..., jnp.newaxis])[..., 0]
 
-    return jnp.concatenate((axis_angle, v), axis=-1)
+    return jnp.concatenate((axis_angle, v_theta), axis=-1)
