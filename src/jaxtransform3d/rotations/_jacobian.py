@@ -35,16 +35,18 @@ def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
     left_jacobian_SO3_inv :
         Inverse left Jacobian of SO(3) at theta (angle of rotation).
     """
-    theta = jnp.linalg.norm(axis_angle)
+    theta = jnp.linalg.norm(axis_angle, axis=-1)
     theta_safe = jnp.where(theta != 0.0, theta, 1.0)
     omega_unit = norm_vector(axis_angle, norm=theta)
     omega_matrix = cross_product_matrix(omega_unit)
 
     eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
+    factor1 = (1.0 - jnp.cos(theta_safe)) / theta_safe
+    factor2 = 1.0 - jnp.sin(theta_safe) / theta_safe
     J = (
         eye
-        + (1.0 - jnp.cos(theta_safe)) / theta_safe * omega_matrix
-        + (1.0 - jnp.sin(theta_safe) / theta_safe) * omega_matrix @ omega_matrix
+        + factor1[..., jnp.newaxis, jnp.newaxis] * omega_matrix
+        + factor2[..., jnp.newaxis, jnp.newaxis] * omega_matrix @ omega_matrix
     )
     J_taylor = left_jacobian_SO3_series(axis_angle)
 
@@ -107,16 +109,18 @@ def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
     left_jacobian_SO3_inv_series :
         Inverse left Jacobian of SO(3) at theta from Taylor series.
     """
-    theta = jnp.linalg.norm(axis_angle)
+    theta = jnp.linalg.norm(axis_angle, axis=-1)
     theta_safe = jnp.where(theta != 0.0, theta, 1.0)
     omega_unit = norm_vector(axis_angle, norm=theta)
     omega_matrix = cross_product_matrix(omega_unit)
 
     eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
+    factor1 = 0.5 * theta
+    factor2 = 1.0 - 0.5 * theta / jnp.tan(theta_safe / 2.0)
     J_inv = (
         eye
-        - 0.5 * omega_matrix * theta
-        + (1.0 - 0.5 * theta / jnp.tan(theta_safe / 2.0)) * omega_matrix @ omega_matrix
+        - factor1[..., jnp.newaxis, jnp.newaxis] * omega_matrix
+        + factor2[..., jnp.newaxis, jnp.newaxis] * omega_matrix @ omega_matrix
     )
     J_inv_taylor = left_jacobian_SO3_inv_series(axis_angle)
     return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_inv_taylor, J_inv)
