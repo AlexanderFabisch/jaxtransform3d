@@ -36,7 +36,7 @@ def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
         Inverse left Jacobian of SO(3) at theta (angle of rotation).
     """
     theta = jnp.linalg.norm(axis_angle, axis=-1)
-    theta_safe = jnp.where(theta != 0.0, theta, 1.0)
+    theta_safe = jnp.where(theta != 0.0, theta, 1.0)  # avoid division by 0
     omega_unit = norm_vector(axis_angle, norm=theta)
     omega_matrix = cross_product_matrix(omega_unit)
 
@@ -110,7 +110,7 @@ def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
         Inverse left Jacobian of SO(3) at theta from Taylor series.
     """
     theta = jnp.linalg.norm(axis_angle, axis=-1)
-    theta_safe = jnp.where(theta != 0.0, theta, 1.0)
+    theta_safe = jnp.where(theta != 0.0, theta, 1.0)  # avoid division by 0
     omega_unit = norm_vector(axis_angle, norm=theta)
     omega_matrix = cross_product_matrix(omega_unit)
 
