@@ -9,7 +9,6 @@ from ..rotations import (
     matrix_from_compact_axis_angle,
     quaternion_from_compact_axis_angle,
 )
-from ..utils import norm_vector
 from ._transform import create_transform
 
 
@@ -89,51 +88,17 @@ def dual_quaternion_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.A
 
     chex.assert_axis_dimension(exp_coords, axis=-1, expected=6)
 
-    angle = jnp.linalg.norm(exp_coords[..., :3], axis=-1)
-    screw_axes = norm_vector(exp_coords, norm=angle)
+    axis_angle = exp_coords[..., :3]
+    v_theta = exp_coords[..., 3:]
 
-    real = quaternion_from_compact_axis_angle(axis_angle=exp_coords[..., :3])
+    real = quaternion_from_compact_axis_angle(axis_angle=axis_angle)
 
-    t = _translation_from_exp_coords(exp_coords, screw_axes, angle)
-    t = jnp.concatenate((jnp.zeros_like(t[..., :1]), t), axis=-1)
-    dual = 0.5 * compose_quaternions(t, real)
+    J = left_jacobian_SO3(axis_angle)
+    t = (J @ v_theta[..., jnp.newaxis])[..., 0]
+    angle = jnp.linalg.norm(exp_coords[..., :3], axis=-1)[..., jnp.newaxis]
+    t = jnp.where(angle < jnp.finfo(angle.dtype).eps, v_theta, t)
+
+    t_quat = jnp.concatenate((jnp.zeros_like(t[..., :1]), t), axis=-1)
+    dual = 0.5 * compose_quaternions(t_quat, real)
 
     return jnp.concatenate((real, dual), axis=-1)
-
-
-def _translation_from_exp_coords(
-    exp_coords: jax.Array, screw_axis: jax.Array, angle: jax.Array
-) -> jax.Array:
-    tms = angle - jnp.sin(angle)
-    cm1 = jnp.cos(angle) - 1.0
-    o0 = screw_axis[..., 0]
-    o1 = screw_axis[..., 1]
-    o2 = screw_axis[..., 2]
-    v0 = screw_axis[..., 3]
-    v1 = screw_axis[..., 4]
-    v2 = screw_axis[..., 5]
-    o01tms = o0 * o1 * tms
-    o12tms = o1 * o2 * tms
-    o02tms = o0 * o2 * tms
-    o0cm1 = o0 * cm1
-    o1cm1 = o1 * cm1
-    o2cm1 = o2 * cm1
-    o00tms = o0 * o0 * tms
-    o11tms = o1 * o1 * tms
-    o22tms = o2 * o2 * tms
-    t = jnp.stack(
-        (
-            -v0 * (o11tms + o22tms - angle)
-            + v1 * (o01tms + o2cm1)
-            + v2 * (o02tms - o1cm1),
-            v0 * (o01tms - o2cm1)
-            - v1 * (o00tms + o22tms - angle)
-            + v2 * (o0cm1 + o12tms),
-            v0 * (o02tms + o1cm1)
-            - v1 * (o0cm1 - o12tms)
-            - v2 * (o00tms + o11tms - angle),
-        ),
-        axis=-1,
-    )
-    t = jnp.where(angle[..., jnp.newaxis] != 0.0, t, exp_coords[..., 3:])
-    return t
