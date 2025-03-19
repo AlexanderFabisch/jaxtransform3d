@@ -10,6 +10,7 @@ from ..rotations import (
 )
 from ..utils import norm_vector
 from ._transform import create_transform
+from ..rotations import left_jacobian_SO3
 
 
 def transform_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.Array:
@@ -58,14 +59,15 @@ def transform_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.Array:
 
     chex.assert_axis_dimension(exp_coords, axis=-1, expected=6)
 
-    angle = jnp.linalg.norm(exp_coords[..., :3], axis=-1)
-    screw_axis = norm_vector(exp_coords, norm=angle)
+    axis_angle = exp_coords[..., :3]
+    v_theta = exp_coords[..., 3:]
 
-    R = matrix_from_compact_axis_angle(
-        axis_angle=exp_coords[..., :3], axis=screw_axis[..., :3], angle=angle
-    )
+    R = matrix_from_compact_axis_angle(axis_angle=axis_angle)
 
-    t = _translation_from_exp_coords(exp_coords, screw_axis, angle)
+    J = left_jacobian_SO3(axis_angle)
+    t = (J @ v_theta[..., jnp.newaxis])[..., 0]
+    angle = jnp.linalg.norm(exp_coords[..., :3], axis=-1)[..., jnp.newaxis]
+    t = jnp.where(angle < jnp.finfo(angle.dtype).eps, v_theta, t)
 
     return create_transform(R, t)
 

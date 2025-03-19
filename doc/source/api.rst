@@ -38,6 +38,17 @@ Quaternions
    ~quaternion_from_compact_axis_angle
    ~compact_axis_angle_from_quaternion
 
+Jacobians
+---------
+
+.. autosummary::
+   :toctree: _apidoc/
+
+   left_jacobian_SO3
+   left_jacobian_SO3_series
+   left_jacobian_SO3_inv
+   left_jacobian_SO3_inv_series
+
 
 :mod:`jaxtransform3d.transformations`
 =====================================

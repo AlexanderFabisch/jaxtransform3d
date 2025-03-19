@@ -55,7 +55,7 @@ def cross_product_matrix(v: jnp.ndarray) -> jnp.ndarray:
     return jnp.stack((col1, col2, col3), axis=-1)
 
 
-def left_jacobian_SO3(omega: jnp.ndarray) -> jnp.ndarray:
+def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
     r"""Left Jacobian of SO(3) at theta (angle of rotation).
 
     .. math::
@@ -70,7 +70,7 @@ def left_jacobian_SO3(omega: jnp.ndarray) -> jnp.ndarray:
 
     Parameters
     ----------
-    omega : array, shape (..., 3)
+    axis_angle : array, shape (..., 3)
         Compact axis-angle representation.
 
     Returns
@@ -86,9 +86,9 @@ def left_jacobian_SO3(omega: jnp.ndarray) -> jnp.ndarray:
     left_jacobian_SO3_inv :
         Inverse left Jacobian of SO(3) at theta (angle of rotation).
     """
-    theta = jnp.linalg.norm(omega)
+    theta = jnp.linalg.norm(axis_angle)
     theta_safe = jnp.where(theta != 0.0, theta, 1.0)
-    omega_unit = norm_vector(omega, norm=theta)
+    omega_unit = norm_vector(axis_angle, norm=theta)
     omega_matrix = cross_product_matrix(omega_unit)
 
     I = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
@@ -97,16 +97,16 @@ def left_jacobian_SO3(omega: jnp.ndarray) -> jnp.ndarray:
         + (1.0 - jnp.cos(theta)) / theta_safe * omega_matrix
         + (1.0 - jnp.sin(theta) / theta_safe) * omega_matrix @ omega_matrix
     )
-    J_taylor = left_jacobian_SO3_series(omega)
+    J_taylor = left_jacobian_SO3_series(axis_angle)
     return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_taylor, J)
 
 
-def left_jacobian_SO3_series(omega: jnp.ndarray):
+def left_jacobian_SO3_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     """Left Jacobian of SO(3) at theta from Taylor series with 3 terms.
 
     Parameters
     ----------
-    omega : array-like, shape (..., 3)
+    axis_angle : array-like, shape (..., 3)
         Compact axis-angle representation.
 
     Returns
@@ -118,8 +118,8 @@ def left_jacobian_SO3_series(omega: jnp.ndarray):
     --------
     left_jacobian_SO3 : Left Jacobian of SO(3) at theta (angle of rotation).
     """
-    I = jnp.broadcast_to(jnp.eye(3), omega.shape + (3,))
-    px = cross_product_matrix(omega)
+    I = jnp.broadcast_to(jnp.eye(3), axis_angle.shape + (3,))
+    px = cross_product_matrix(axis_angle)
     # n-th term (recursive): pxn = pxn @ px / (n + 2)
     px0 = px * 0.5
     px1 = px0 @ px / 3.0
@@ -127,7 +127,7 @@ def left_jacobian_SO3_series(omega: jnp.ndarray):
     return I + px0 + px1 + px2
 
 
-def left_jacobian_SO3_inv(omega: jnp.ndarray) -> jnp.ndarray:
+def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
     r"""Inverse left Jacobian of SO(3) at theta (angle of rotation).
 
     .. math::
@@ -141,7 +141,7 @@ def left_jacobian_SO3_inv(omega: jnp.ndarray) -> jnp.ndarray:
 
     Parameters
     ----------
-    omega : array-like, shape (..., 3)
+    axis_angle : array-like, shape (..., 3)
         Compact axis-angle representation.
 
     Returns
@@ -156,9 +156,9 @@ def left_jacobian_SO3_inv(omega: jnp.ndarray) -> jnp.ndarray:
     left_jacobian_SO3_inv_series :
         Inverse left Jacobian of SO(3) at theta from Taylor series.
     """
-    theta = jnp.linalg.norm(omega)
+    theta = jnp.linalg.norm(axis_angle)
     theta_safe = jnp.where(theta != 0.0, theta, 1.0)
-    omega_unit = norm_vector(omega, norm=theta)
+    omega_unit = norm_vector(axis_angle, norm=theta)
     omega_matrix = cross_product_matrix(omega_unit)
 
     I = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
@@ -168,16 +168,16 @@ def left_jacobian_SO3_inv(omega: jnp.ndarray) -> jnp.ndarray:
         + (1.0 - 0.5 * theta / jnp.tan(theta_safe / 2.0))
         * omega_matrix @ omega_matrix
     )
-    J_inv_taylor = left_jacobian_SO3_inv_series(omega)
+    J_inv_taylor = left_jacobian_SO3_inv_series(axis_angle)
     return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_inv_taylor, J_inv)
 
 
-def left_jacobian_SO3_inv_series(omega: jnp.ndarray) -> jnp.ndarray:
+def left_jacobian_SO3_inv_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     """Inverse left Jacobian of SO(3) at theta from Taylor series with 3 terms.
 
     Parameters
     ----------
-    omega : array-like, shape (..., 3)
+    axis_angle : array, shape (..., 3)
         Compact axis-angle representation.
 
     Returns
@@ -190,8 +190,8 @@ def left_jacobian_SO3_inv_series(omega: jnp.ndarray) -> jnp.ndarray:
     left_jacobian_SO3_inv :
         Inverse left Jacobian of SO(3) at theta (angle of rotation).
     """
-    I = jnp.broadcast_to(jnp.eye(3), omega.shape + (3,))
-    px = cross_product_matrix(omega)
+    I = jnp.broadcast_to(jnp.eye(3), axis_angle.shape + (3,))
+    px = cross_product_matrix(axis_angle)
     # n-th term (recursive): pxn = pxn @ px / (n + 1)
     # multiplied with the Beroulli number b[n + 1]:
     # from scipy.special import bernoulli
