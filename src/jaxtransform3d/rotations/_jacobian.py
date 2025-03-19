@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 
 from ..utils import cross_product_matrix, norm_vector
@@ -45,8 +46,8 @@ def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
         + (1.0 - jnp.cos(theta_safe)) / theta_safe * omega_matrix
         + (1.0 - jnp.sin(theta_safe) / theta_safe) * omega_matrix @ omega_matrix
     )
-    return J
     J_taylor = left_jacobian_SO3_series(axis_angle)
+
     return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_taylor, J)
 
 
@@ -69,11 +70,12 @@ def left_jacobian_SO3_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     """
     eye = jnp.broadcast_to(jnp.eye(3), axis_angle.shape + (3,))
     px = cross_product_matrix(axis_angle)
-    # n-th term (recursive): pxn = pxn @ px / (n + 2)
-    px0 = px * 0.5
-    px1 = px0 @ px / 3.0
-    px2 = px1 @ px * 0.25
-    return eye + px0 + px1 + px2
+    pxn = eye
+    J = eye
+    for n in range(10):
+        pxn = pxn @ px / (n + 2)
+        J = J + pxn
+    return J
 
 
 def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
@@ -116,7 +118,6 @@ def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
         - 0.5 * omega_matrix * theta
         + (1.0 - 0.5 * theta / jnp.tan(theta_safe / 2.0)) * omega_matrix @ omega_matrix
     )
-    return J_inv
     J_inv_taylor = left_jacobian_SO3_inv_series(axis_angle)
     return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_inv_taylor, J_inv)
 
@@ -141,11 +142,12 @@ def left_jacobian_SO3_inv_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     """
     eye = jnp.broadcast_to(jnp.eye(3), axis_angle.shape + (3,))
     px = cross_product_matrix(axis_angle)
-    # n-th term (recursive): pxn = pxn @ px / (n + 1)
-    # multiplied with the Beroulli number b[n + 1]:
-    # from scipy.special import bernoulli
-    # b = bernoulli(n_terms + 1)
-    # -> array([1.0, -0.5, 0.16666667, 0.0])
-    #                  ^         ^      ^
-    #                  0         1      2
-    return eye - px * 0.5 + px @ px / 12.0
+
+    J_inv = eye
+    pxn = eye
+    px = cross_product_matrix(axis_angle)
+    b = jax.scipy.special.bernoulli(11)
+    for n in range(10):
+        pxn = pxn @ px / (n + 1)
+        J_inv = J_inv + b[n + 1] * pxn
+    return J_inv
