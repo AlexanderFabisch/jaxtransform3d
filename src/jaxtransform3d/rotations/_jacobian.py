@@ -1,58 +1,6 @@
 import jax.numpy as jnp
-import numpy as np
 
-from ..utils import norm_vector
-
-
-def cross_product_matrix(v: jnp.ndarray) -> jnp.ndarray:
-    r"""Cross-product matrix of a vector.
-
-    The cross-product matrix :math:`\boldsymbol{V}` satisfies the equation
-
-    .. math::
-
-        \boldsymbol{V} \boldsymbol{w} = \boldsymbol{v} \times
-        \boldsymbol{w}.
-
-    It is a skew-symmetric (antisymmetric) matrix, i.e.,
-    :math:`-\boldsymbol{V} = \boldsymbol{V}^T`. Its elements are
-
-    .. math::
-
-        \left[\boldsymbol{v}\right]
-        =
-        \left[\begin{array}{c}
-        v_1\\ v_2\\ v_3
-        \end{array}\right]
-        =
-        \boldsymbol{V}
-        =
-        \left(\begin{array}{ccc}
-        0 & -v_3 & v_2\\
-        v_3 & 0 & -v_1\\
-        -v_2 & v_1 & 0
-        \end{array}\right).
-
-    Parameters
-    ----------
-    v : array, shape (..., 3)
-        3d vector.
-
-    Returns
-    -------
-    V : array, shape (..., 3, 3)
-        Cross-product matrix.
-    """
-    v0 = v[..., 0]
-    v1 = v[..., 1]
-    v2 = v[..., 2]
-    z = jnp.zeros_like(v0)
-
-    col1 = jnp.stack((z, v2, -v1), axis=-1)
-    col2 = jnp.stack((-v2, z, v0), axis=-1)
-    col3 = jnp.stack((v1, -v0, z), axis=-1)
-
-    return jnp.stack((col1, col2, col3), axis=-1)
+from ..utils import cross_product_matrix, norm_vector
 
 
 def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
@@ -91,12 +39,13 @@ def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
     omega_unit = norm_vector(axis_angle, norm=theta)
     omega_matrix = cross_product_matrix(omega_unit)
 
-    I = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
+    eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
     J = (
-        I
-        + (1.0 - jnp.cos(theta)) / theta_safe * omega_matrix
-        + (1.0 - jnp.sin(theta) / theta_safe) * omega_matrix @ omega_matrix
+        eye
+        + (1.0 - jnp.cos(theta_safe)) / theta_safe * omega_matrix
+        + (1.0 - jnp.sin(theta_safe) / theta_safe) * omega_matrix @ omega_matrix
     )
+    return J
     J_taylor = left_jacobian_SO3_series(axis_angle)
     return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_taylor, J)
 
@@ -118,13 +67,13 @@ def left_jacobian_SO3_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     --------
     left_jacobian_SO3 : Left Jacobian of SO(3) at theta (angle of rotation).
     """
-    I = jnp.broadcast_to(jnp.eye(3), axis_angle.shape + (3,))
+    eye = jnp.broadcast_to(jnp.eye(3), axis_angle.shape + (3,))
     px = cross_product_matrix(axis_angle)
     # n-th term (recursive): pxn = pxn @ px / (n + 2)
     px0 = px * 0.5
     px1 = px0 @ px / 3.0
     px2 = px1 @ px * 0.25
-    return I + px0 + px1 + px2
+    return eye + px0 + px1 + px2
 
 
 def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
@@ -161,13 +110,13 @@ def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
     omega_unit = norm_vector(axis_angle, norm=theta)
     omega_matrix = cross_product_matrix(omega_unit)
 
-    I = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
+    eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
     J_inv = (
-        I
+        eye
         - 0.5 * omega_matrix * theta
-        + (1.0 - 0.5 * theta / jnp.tan(theta_safe / 2.0))
-        * omega_matrix @ omega_matrix
+        + (1.0 - 0.5 * theta / jnp.tan(theta_safe / 2.0)) * omega_matrix @ omega_matrix
     )
+    return J_inv
     J_inv_taylor = left_jacobian_SO3_inv_series(axis_angle)
     return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_inv_taylor, J_inv)
 
@@ -190,7 +139,7 @@ def left_jacobian_SO3_inv_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     left_jacobian_SO3_inv :
         Inverse left Jacobian of SO(3) at theta (angle of rotation).
     """
-    I = jnp.broadcast_to(jnp.eye(3), axis_angle.shape + (3,))
+    eye = jnp.broadcast_to(jnp.eye(3), axis_angle.shape + (3,))
     px = cross_product_matrix(axis_angle)
     # n-th term (recursive): pxn = pxn @ px / (n + 1)
     # multiplied with the Beroulli number b[n + 1]:
@@ -199,4 +148,4 @@ def left_jacobian_SO3_inv_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     # -> array([1.0, -0.5, 0.16666667, 0.0])
     #                  ^         ^      ^
     #                  0         1      2
-    return I - px * 0.5 + px @ px / 12.0
+    return eye - px * 0.5 + px @ px / 12.0

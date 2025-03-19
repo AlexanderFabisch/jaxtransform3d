@@ -5,12 +5,12 @@ from jax.typing import ArrayLike
 
 from ..rotations import (
     compose_quaternions,
+    left_jacobian_SO3,
     matrix_from_compact_axis_angle,
     quaternion_from_compact_axis_angle,
 )
 from ..utils import norm_vector
 from ._transform import create_transform
-from ..rotations import left_jacobian_SO3
 
 
 def transform_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.Array:

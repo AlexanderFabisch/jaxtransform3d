@@ -13,6 +13,12 @@ from ._axis_angle import (
     matrix_from_compact_axis_angle,
     quaternion_from_compact_axis_angle,
 )
+from ._jacobian import (
+    left_jacobian_SO3,
+    left_jacobian_SO3_inv,
+    left_jacobian_SO3_inv_series,
+    left_jacobian_SO3_series,
+)
 from ._matrix import (
     apply_matrix,
     compact_axis_angle_from_matrix,
@@ -26,12 +32,6 @@ from ._quaternion import (
     compose_quaternions,
     norm_quaternion,
     quaternion_conjugate,
-)
-from ._jacobians import (
-    left_jacobian_SO3,
-    left_jacobian_SO3_series,
-    left_jacobian_SO3_inv,
-    left_jacobian_SO3_inv_series,
 )
 
 __all__ = [
