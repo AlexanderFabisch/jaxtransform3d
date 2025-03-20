@@ -113,10 +113,10 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     >>> R = matrix_from_compact_axis_angle(a)
     >>> v = jnp.array([[0.5, 1.0, 2.5], [1, 2, 3]])
     >>> apply_matrix(R[0], v[0]).round(7)
-    Array([ 0.5..., -2.5...,  0.9999...], ...)
+    Array([ 0.5, -2.5,  1. ], ...)
     >>> apply_matrix(R, v)
-    Array([[ 0.49999997, -2.5       ,  0.9999999 ],
-           [ 3.        ,  1.9999999 , -1.0000001 ]], dtype=float32)
+    Array([[ 0.5, -2.5,  1. ],
+           [ 3. ,  2. , -1. ]], dtype=float32)
     """
     R = jnp.asarray(R)
     v = jnp.asarray(v)
@@ -200,6 +200,11 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     >>> compact_axis_angle_from_matrix(
     ...     jnp.array([[0., 0., -1.], [0., 1., 0.], [1., 0., 0.]]))
     Array([ 0..., -1.57...,  0...], dtype=...)
+
+    References
+    ----------
+    .. [1] Williams, A. (n.d.). Computing the exponential map on SO(3).
+       https://arwilliams.github.io/so3-exp.pdf
     """
     R = jnp.asarray(R)
     if not jnp.issubdtype(R.dtype, jnp.floating):
@@ -208,36 +213,40 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     chex.assert_axis_dimension(R, axis=-2, expected=3)
     chex.assert_axis_dimension(R, axis=-1, expected=3)
 
-    instances_shape = R.shape[:-2]
-    R = R.reshape(-1, 3, 3)
-
-    traces = jnp.einsum("nii", R)
-    cos_angle = jnp.clip((traces - 1.0) / 2.0, -1.0, 1.0)
+    # determine angle from traces
+    traces = jnp.einsum("...ii", R)
+    cos_angle = jnp.clip(0.5 * (traces - 1.0), -1.0, 1.0)
     angle = jnp.arccos(cos_angle)
 
-    axis_unnormalized = jnp.column_stack(
-        (R[:, 2, 1] - R[:, 1, 2], R[:, 0, 2] - R[:, 2, 0], R[:, 1, 0] - R[:, 0, 1])
+    # same as:
+    # RT = R.transpose(tuple(range(R.ndim - 2)) + (R.ndim - 1, R.ndim - 2))
+    # matrix_unnormalized = R - RT
+    # axis_unnormalized = cross_product_vector(matrix_unnormalized)
+    axis_unnormalized = jnp.stack(
+        (
+            R[..., 2, 1] - R[..., 1, 2],
+            R[..., 0, 2] - R[..., 2, 0],
+            R[..., 1, 0] - R[..., 0, 1],
+        ),
+        axis=-1,
     )
 
-    R_diag = jnp.clip(jnp.einsum("nii->ni", R), -1.0, 1.0)
-    eeT_diag = 0.5 * (R_diag + 1.0)
+    # Direct solution with correction for small angles with Taylor series.
+    # We do not use it because normalizing the axis seems to be more accurate.
+    # s = jnp.sin(angle)
+    # factor = 0.5 * angle / jnp.where(s == 0.0, 1.0, s)
+    # factor_taylor = 0.5 + angle**2 / 12.0 + 7.0 * angle**4 / 720.0  # + O(theta**6)
+    # factor = jnp.where(angle < 1e-4, factor_taylor, factor)
+    # axis_angle = axis_unnormalized * factor[..., jnp.newaxis]
+
+    # special case: angle close to pi
+    R_diag = jnp.clip(jnp.einsum("...ii->...i", R), -1.0, 1.0)
     signs = 2.0 * (axis_unnormalized >= 0.0).astype(R.dtype) - 1.0
-    axis_close_to_pi = jnp.sqrt(eeT_diag) * signs
-
-    angle_close_to_pi = abs(angle - jnp.pi) < 1e-4
-    axis = jnp.where(
-        angle_close_to_pi[:, jnp.newaxis], axis_close_to_pi, axis_unnormalized
+    axis_close_to_pi = jnp.sqrt(0.5 * (R_diag + 1.0)) * signs
+    angle_close_to_pi = jnp.abs(angle - jnp.pi) < 1e-4
+    axis_unnormalized = jnp.where(
+        angle_close_to_pi[..., jnp.newaxis], axis_close_to_pi, axis_unnormalized
     )
-    axis = norm_vector(axis)
+    axis = norm_vector(axis_unnormalized)
 
-    angle_nonzero = angle != 0.0
-    axis = jnp.where(angle_nonzero[:, jnp.newaxis], axis, 0.0)
-
-    axis_angle = axis * angle[:, jnp.newaxis]
-
-    if instances_shape:
-        axis_angle = axis_angle.reshape(*instances_shape + (3,))
-    else:
-        axis_angle = axis_angle[0]
-
-    return axis_angle
+    return axis * angle[..., jnp.newaxis]

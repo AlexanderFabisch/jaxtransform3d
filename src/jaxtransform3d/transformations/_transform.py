@@ -3,8 +3,12 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..rotations import apply_matrix, compact_axis_angle_from_matrix, matrix_inverse
-from ..utils import norm_vector
+from ..rotations import (
+    apply_matrix,
+    compact_axis_angle_from_matrix,
+    left_jacobian_SO3_inv,
+    matrix_inverse,
+)
 
 
 def transform_inverse(T: ArrayLike) -> jax.Array:
@@ -204,51 +208,7 @@ def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
     R = T[..., :3, :3]
     t = T[..., :3, 3]
 
-    # TODO stable solution:
-    # https://github.com/dfki-ric/pytransform3d/blob/main/pytransform3d/transformations/_transform.py#L314
-    # https://github.com/dfki-ric/pytransform3d/blob/main/pytransform3d/rotations/_jacobians.py#L84
-    # https://github.com/dfki-ric/pytransform3d/blob/main/pytransform3d/rotations/_jacobians.py#L127
-
     axis_angle = compact_axis_angle_from_matrix(R)
+    v_theta = (left_jacobian_SO3_inv(axis_angle) @ t[..., jnp.newaxis])[..., 0]
 
-    angle = jnp.linalg.norm(axis_angle, axis=-1)
-    axis = norm_vector(axis_angle, norm=angle)
-    v = _v(axis, angle, t)
-
-    return jnp.concatenate((axis_angle, v), axis=-1)
-
-
-def _v(axis: jax.Array, angle: jax.Array, t: jax.Array) -> jax.Array:
-    ti = jnp.where(angle != 0.0, 1.0 / angle, 0.0)
-    tan_term = -0.5 / jnp.tan(angle / 2.0) + ti
-    o0 = axis[..., 0]
-    o1 = axis[..., 1]
-    o2 = axis[..., 2]
-    t0 = t[..., 0]
-    t1 = t[..., 1]
-    t2 = t[..., 2]
-    o00 = o0 * o0
-    o01 = o0 * o1
-    o02 = o0 * o2
-    o11 = o1 * o1
-    o12 = o1 * o2
-    o22 = o2 * o2
-    v = (
-        jnp.stack(
-            (
-                t0 * ((-o11 - o22) * tan_term + ti)
-                + t1 * (o01 * tan_term + 0.5 * o2)
-                + t2 * (o02 * tan_term - 0.5 * o1),
-                t0 * (o01 * tan_term - 0.5 * o2)
-                + t1 * ((-o00 - o22) * tan_term + ti)
-                + t2 * (0.5 * o0 + o12 * tan_term),
-                t0 * (o02 * tan_term + 0.5 * o1)
-                + t1 * (-0.5 * o0 + o12 * tan_term)
-                + t2 * ((-o00 - o11) * tan_term + ti),
-            ),
-            axis=-1,
-        )
-        * angle[..., jnp.newaxis]
-    )
-    v = jnp.where((angle != 0.0)[..., jnp.newaxis], v, t)
-    return v
+    return jnp.concatenate((axis_angle, v_theta), axis=-1)

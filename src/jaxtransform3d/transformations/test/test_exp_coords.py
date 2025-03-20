@@ -38,7 +38,7 @@ def test_transform_from_exponential_coordinates_0dim():
         T = transform_from_exponential_coordinates(exp_coords)
         assert_array_almost_equal(
             T,
-            ptr.transform_from_exponential_coordinates(exp_coords),
+            ptr.transforms_from_exponential_coordinates(exp_coords),
         )
 
 
