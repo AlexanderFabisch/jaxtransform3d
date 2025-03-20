@@ -54,7 +54,7 @@ def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
 
 
 def left_jacobian_SO3_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
-    """Left Jacobian of SO(3) at theta from Taylor series with 3 terms.
+    """Left Jacobian of SO(3) at theta from Taylor series with 10 terms.
 
     Parameters
     ----------
@@ -127,7 +127,7 @@ def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
 
 
 def left_jacobian_SO3_inv_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
-    """Inverse left Jacobian of SO(3) at theta from Taylor series with 3 terms.
+    """Inverse left Jacobian of SO(3) at theta from Taylor series with 10 terms.
 
     Parameters
     ----------
