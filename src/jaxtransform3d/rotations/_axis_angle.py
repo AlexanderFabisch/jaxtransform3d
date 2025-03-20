@@ -3,12 +3,11 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import norm_vector
+from ..utils import cross_product_matrix, norm_vector
 
 
 def matrix_from_compact_axis_angle(
     axis_angle: ArrayLike | None = None,
-    axis: ArrayLike | None = None,
     angle: ArrayLike | None = None,
 ) -> jax.Array:
     r"""Compute rotation matrices from compact axis-angle representations.
@@ -43,10 +42,6 @@ def matrix_from_compact_axis_angle(
         Axes of rotation and rotation angles in compact representation:
         angle * (x, y, z), also known as rotation vector.
 
-    axis : array, shape (..., 3)
-        If the unit axes of rotation have been precomputed, you can pass them
-        here.
-
     angle : array, shape (...)
         If the angles have been precomputed, you can pass them here.
 
@@ -69,12 +64,17 @@ def matrix_from_compact_axis_angle(
     Array([[-0.02830462,  0.46713185,  0.29570296],
            [ 0.15354592, -0.12403282,  0.21692315]], dtype=...)
     >>> matrix_from_compact_axis_angle(a)
-    Array([[[ 0.8510371 , -0.2872734 ,  0.43955666],
-            [ 0.27438563,  0.95699465,  0.09420117],
-            [-0.44771487,  0.0404393 ,  0.89326155]],
-           [[ 0.96900326, -0.22328097, -0.10572752],
-            [ 0.20437238,  0.96493644, -0.16471078],
-            [ 0.1387971 ,  0.1379975 ,  0.980659  ]]], dtype=...)
+    Array([[[ 0.85103..., -0.28727...,  0.43955...],
+            [ 0.27438...,  0.95699...,  0.09420...],
+            [-0.44771...,  0.04043...,  0.89326...]],
+           [[ 0.96900..., -0.22328..., -0.10572...],
+            [ 0.20437...,  0.96493..., -0.16471...],
+            [ 0.13879...,  0.13799...,  0.98065...]]], dtype=...)
+
+    References
+    ----------
+    .. [1] Williams, A. (n.d.). Computing the exponential map on SO(3).
+       https://arwilliams.github.io/so3-exp.pdf
     """
     axis_angle = jnp.asarray(axis_angle)
     if not jnp.issubdtype(axis_angle.dtype, jnp.floating):
@@ -85,36 +85,29 @@ def matrix_from_compact_axis_angle(
     else:
         angle = jnp.asarray(angle)
 
-    if axis is None:
-        axis = norm_vector(axis_angle, angle)
-    else:
-        axis = jnp.asarray(axis)
-
     chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
-    chex.assert_equal_shape((axis_angle, axis))
     chex.assert_equal_shape_prefix((axis_angle, angle), prefix_len=axis_angle.ndim - 1)
 
-    c = jnp.cos(angle)
-    s = jnp.sin(angle)
-    ci = 1.0 - c
-    ux = axis[..., 0]
-    uy = axis[..., 1]
-    uz = axis[..., 2]
+    angle_safe = jnp.where(angle != 0.0, angle, 1.0)  # avoid division by 0
+    factor1 = jnp.sin(angle) / angle_safe
+    factor2 = (1.0 - jnp.cos(angle)) / angle_safe**2
 
-    uxs = ux * s
-    uys = uy * s
-    uzs = uz * s
-    ciux = ci * ux
-    ciuy = ci * uy
-    ciuxuy = ciux * uy
-    ciuxuz = ciux * uz
-    ciuyuz = ciuy * uz
+    angle_p2 = angle**2
+    angle_p4 = angle**4
+    factor1_taylor = 1.0 - angle_p2 / 6.0 + angle_p4 / 120.0  # + O(angle**6)
+    factor2_taylor = 0.5 - angle_p2 / 24.0 + angle_p4 / 720.0  # + O(angle**6)
 
-    col1 = jnp.stack((ciux * ux + c, ciuxuy + uzs, ciuxuz - uys), axis=-1)
-    col2 = jnp.stack((ciuxuy - uzs, ciuy * uy + c, ciuyuz + uxs), axis=-1)
-    col3 = jnp.stack((ciuxuz + uys, ciuyuz - uxs, ci * uz * uz + c), axis=-1)
+    factor1 = jnp.where(angle < 1e-3, factor1_taylor, factor1)
+    factor2 = jnp.where(angle < 1e-3, factor2_taylor, factor2)
 
-    return jnp.stack((col1, col2, col3), axis=-1)
+    omega_matrix = cross_product_matrix(axis_angle)
+    eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
+
+    return (
+        eye
+        + factor1[..., jnp.newaxis, jnp.newaxis] * omega_matrix
+        + factor2[..., jnp.newaxis, jnp.newaxis] * omega_matrix @ omega_matrix
+    )
 
 
 def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:

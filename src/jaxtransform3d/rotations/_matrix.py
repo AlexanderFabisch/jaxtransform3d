@@ -113,10 +113,10 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     >>> R = matrix_from_compact_axis_angle(a)
     >>> v = jnp.array([[0.5, 1.0, 2.5], [1, 2, 3]])
     >>> apply_matrix(R[0], v[0]).round(7)
-    Array([ 0.5..., -2.5...,  0.9999...], ...)
+    Array([ 0.5, -2.5,  1. ], ...)
     >>> apply_matrix(R, v)
-    Array([[ 0.49999997, -2.5       ,  0.9999999 ],
-           [ 3.        ,  1.9999999 , -1.0000001 ]], dtype=float32)
+    Array([[ 0.5, -2.5,  1. ],
+           [ 3. ,  2. , -1. ]], dtype=float32)
     """
     R = jnp.asarray(R)
     v = jnp.asarray(v)
