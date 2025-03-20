@@ -52,8 +52,7 @@ def norm_vector(vec: ArrayLike, norm: ArrayLike | None = None) -> jax.Array:
     if norm is None:
         norm = jnp.linalg.norm(vec, axis=-1)
     norm = jnp.where(norm != 0.0, norm, 1.0)
-    norm = norm[..., jnp.newaxis]
-    return jnp.where(norm != 0.0, vec / norm, 0.0)  # TODO required?
+    return vec / norm[..., jnp.newaxis]
 
 
 def cross_product_matrix(v: ArrayLike) -> jnp.ndarray:
