@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import cross_product_matrix, norm_vector
+from ..utils import cross_product_matrix
 
 
 def matrix_from_compact_axis_angle(
@@ -134,21 +134,28 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     >>> import jax
     >>> a = jax.random.normal(jax.random.PRNGKey(42), shape=(2, 3))
     >>> a
-    Array([[-0.02830462,  0.46713185,  0.29570296],
-           [ 0.15354592, -0.12403282,  0.21692315]], dtype=...)
+    Array([[-0.0283...,  0.4671...,  0.2957...],
+           [ 0.1535..., -0.1240...,  0.2169...]], dtype=...)
     >>> quaternion_from_compact_axis_angle(a)
-    Array([[ 0.96193725, -0.01397229,  0.23059493,  0.14597079],
-           [ 0.98926723,  0.0764981 , -0.06179438,  0.10807326]], ...)
+    Array([[ 0.9619..., -0.0139...,  0.2305...,  0.1459...],
+           [ 0.9892...,  0.0764..., -0.0617...,  0.1080...]], ...)
     """
     axis_angle = jnp.asarray(axis_angle)
 
     chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
 
     angle = jnp.linalg.norm(axis_angle, axis=-1)
-    axis = norm_vector(axis_angle, norm=angle)
-
+    angle_safe = jnp.where(angle == 0, 1.0, angle)
     half_angle = 0.5 * angle
+
+    axis_scale = jnp.sin(half_angle) / angle_safe
+    # small angle Taylor series expansion based on
+    # https://github.com/scipy/scipy/blob/ae25ba2385e62d5372a47ed59f9cfddc5ab3dc6a/scipy/spatial/transform/_rotation.pyx#L1300
+    angle_p2 = angle * angle
+    axis_scale_taylor = 0.5 - angle_p2 / 48.0 * angle_p2 * angle_p2 / 3840.0
+    axis_scale = jnp.where(angle < 1e-3, axis_scale_taylor, axis_scale)
+
     real = jnp.cos(half_angle)[..., jnp.newaxis]
-    vec = jnp.sin(half_angle)[..., jnp.newaxis] * axis
+    vec = axis_scale[..., jnp.newaxis] * axis_angle
 
     return jnp.concatenate((real, vec), axis=-1)
