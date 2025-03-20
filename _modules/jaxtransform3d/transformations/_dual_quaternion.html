@@ -111,8 +111,14 @@
   
   
   
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.png" class="logo__image only-light" alt="pytransform3d 0.0.0"/>
+    <img src="../../../_static/logo.png" class="logo__image only-dark pst-js-only" alt="pytransform3d 0.0.0"/>
   
-    <p class="title logo__title">jaxtransform3d 0.0.0 documentation</p>
   
 </a></div>
     
@@ -309,10 +315,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..rotations</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">compact_axis_angle_from_quaternion</span><span class="p">,</span>
     <span class="n">compose_quaternions</span><span class="p">,</span>
+    <span class="n">left_jacobian_SO3_inv</span><span class="p">,</span>
     <span class="n">quaternion_conjugate</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm_vector</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">_v</span>
 
 
 <div class="viewcode-block" id="norm_dual_quaternion">
@@ -572,14 +577,12 @@
     <span class="n">real</span> <span class="o">=</span> <span class="n">dual_quat</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">4</span><span class="p">]</span>
     <span class="n">dual</span> <span class="o">=</span> <span class="n">dual_quat</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">4</span><span class="p">:]</span>
 
-    <span class="n">t</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">compose_quaternions</span><span class="p">(</span><span class="n">dual</span><span class="p">,</span> <span class="n">quaternion_conjugate</span><span class="p">(</span><span class="n">real</span><span class="p">))[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
     <span class="n">axis_angle</span> <span class="o">=</span> <span class="n">compact_axis_angle_from_quaternion</span><span class="p">(</span><span class="n">real</span><span class="p">)</span>
 
-    <span class="n">angle</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">axis_angle</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">axis</span> <span class="o">=</span> <span class="n">norm_vector</span><span class="p">(</span><span class="n">axis_angle</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="n">_v</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">compose_quaternions</span><span class="p">(</span><span class="n">dual</span><span class="p">,</span> <span class="n">quaternion_conjugate</span><span class="p">(</span><span class="n">real</span><span class="p">))[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+    <span class="n">v_theta</span> <span class="o">=</span> <span class="p">(</span><span class="n">left_jacobian_SO3_inv</span><span class="p">(</span><span class="n">axis_angle</span><span class="p">)</span> <span class="o">@</span> <span class="n">t</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
 
-    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">axis_angle</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">axis_angle</span><span class="p">,</span> <span class="n">v_theta</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
 
 </pre></div>
 

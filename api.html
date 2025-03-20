@@ -31,7 +31,7 @@
 <link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css?v=7f9a90b1" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
@@ -280,6 +280,12 @@
 <li class="toctree-l1"><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.compact_axis_angle_from_quaternion.html">jaxtransform3d.rotations.compact_axis_angle_from_quaternion</a></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.left_jacobian_SO3.html">jaxtransform3d.rotations.left_jacobian_SO3</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.left_jacobian_SO3_series.html">jaxtransform3d.rotations.left_jacobian_SO3_series</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.left_jacobian_SO3_inv.html">jaxtransform3d.rotations.left_jacobian_SO3_inv</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.left_jacobian_SO3_inv_series.html">jaxtransform3d.rotations.left_jacobian_SO3_inv_series</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="_apidoc/jaxtransform3d.transformations.transform_inverse.html">jaxtransform3d.transformations.transform_inverse</a></li>
 <li class="toctree-l1"><a class="reference internal" href="_apidoc/jaxtransform3d.transformations.apply_transform.html">jaxtransform3d.transformations.apply_transform</a></li>
 <li class="toctree-l1"><a class="reference internal" href="_apidoc/jaxtransform3d.transformations.compose_transforms.html">jaxtransform3d.transformations.compose_transforms</a></li>
@@ -419,6 +425,26 @@ is non-redundant, continuous, and free of singularities.</p>
 </table>
 </div>
 </section>
+<section id="jacobians">
+<h3>Jacobians<a class="headerlink" href="#jacobians" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.left_jacobian_SO3.html#jaxtransform3d.rotations.left_jacobian_SO3" title="jaxtransform3d.rotations.left_jacobian_SO3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left_jacobian_SO3</span></code></a>(axis_angle)</p></td>
+<td><p>Left Jacobian of SO(3) at theta (angle of rotation).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.left_jacobian_SO3_series.html#jaxtransform3d.rotations.left_jacobian_SO3_series" title="jaxtransform3d.rotations.left_jacobian_SO3_series"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left_jacobian_SO3_series</span></code></a>(axis_angle)</p></td>
+<td><p>Left Jacobian of SO(3) at theta from Taylor series with 10 terms.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.left_jacobian_SO3_inv.html#jaxtransform3d.rotations.left_jacobian_SO3_inv" title="jaxtransform3d.rotations.left_jacobian_SO3_inv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left_jacobian_SO3_inv</span></code></a>(axis_angle)</p></td>
+<td><p>Inverse left Jacobian of SO(3) at theta (angle of rotation).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_apidoc/jaxtransform3d.rotations.left_jacobian_SO3_inv_series.html#jaxtransform3d.rotations.left_jacobian_SO3_inv_series" title="jaxtransform3d.rotations.left_jacobian_SO3_inv_series"><code class="xref py py-obj docutils literal notranslate"><span class="pre">left_jacobian_SO3_inv_series</span></code></a>(axis_angle)</p></td>
+<td><p>Inverse left Jacobian of SO(3) at theta from Taylor series with 10 terms.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 </section>
 <section id="module-jaxtransform3d.transformations">
 <span id="jaxtransform3d-transformations"></span><h2><a class="reference internal" href="#module-jaxtransform3d.transformations" title="jaxtransform3d.transformations"><code class="xref py py-mod docutils literal notranslate"><span class="pre">jaxtransform3d.transformations</span></code></a><a class="headerlink" href="#module-jaxtransform3d.transformations" title="Link to this heading">#</a></h2>
@@ -540,6 +566,7 @@ describe any transformation from <span class="math notranslate nohighlight">\(SE
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rotations-in-3d">Rotations in 3D</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rotation-matrices">Rotation Matrices</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#quaternions">Quaternions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#jacobians">Jacobians</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-jaxtransform3d.transformations"><code class="xref py py-mod docutils literal notranslate"><span class="pre">jaxtransform3d.transformations</span></code></a><ul class="nav section-nav flex-column">

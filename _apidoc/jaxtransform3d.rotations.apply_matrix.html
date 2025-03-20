@@ -31,7 +31,7 @@
 <link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css?v=7f9a90b1" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
@@ -280,6 +280,12 @@
 <li class="toctree-l1"><a class="reference internal" href="jaxtransform3d.rotations.compact_axis_angle_from_quaternion.html">jaxtransform3d.rotations.compact_axis_angle_from_quaternion</a></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="jaxtransform3d.rotations.left_jacobian_SO3.html">jaxtransform3d.rotations.left_jacobian_SO3</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jaxtransform3d.rotations.left_jacobian_SO3_series.html">jaxtransform3d.rotations.left_jacobian_SO3_series</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jaxtransform3d.rotations.left_jacobian_SO3_inv.html">jaxtransform3d.rotations.left_jacobian_SO3_inv</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jaxtransform3d.rotations.left_jacobian_SO3_inv_series.html">jaxtransform3d.rotations.left_jacobian_SO3_inv_series</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="jaxtransform3d.transformations.transform_inverse.html">jaxtransform3d.transformations.transform_inverse</a></li>
 <li class="toctree-l1"><a class="reference internal" href="jaxtransform3d.transformations.apply_transform.html">jaxtransform3d.transformations.apply_transform</a></li>
 <li class="toctree-l1"><a class="reference internal" href="jaxtransform3d.transformations.compose_transforms.html">jaxtransform3d.transformations.compose_transforms</a></li>
@@ -389,10 +395,10 @@
 <span class="gp">&gt;&gt;&gt; </span><span class="n">R</span> <span class="o">=</span> <span class="n">matrix_from_compact_axis_angle</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">v</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">apply_matrix</span><span class="p">(</span><span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>
-<span class="go">Array([ 0.5..., -2.5...,  0.9999...], ...)</span>
+<span class="go">Array([ 0.5, -2.5,  1. ], ...)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">apply_matrix</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
-<span class="go">Array([[ 0.49999997, -2.5       ,  0.9999999 ],</span>
-<span class="go">       [ 3.        ,  1.9999999 , -1.0000001 ]], dtype=float32)</span>
+<span class="go">Array([[ 0.5, -2.5,  1. ],</span>
+<span class="go">       [ 3. ,  2. , -1. ]], dtype=float32)</span>
 </pre></div>
 </div>
 </dd></dl>

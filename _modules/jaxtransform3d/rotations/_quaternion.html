@@ -111,8 +111,14 @@
   
   
   
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.png" class="logo__image only-light" alt="pytransform3d 0.0.0"/>
+    <img src="../../../_static/logo.png" class="logo__image only-dark pst-js-only" alt="pytransform3d 0.0.0"/>
   
-    <p class="title logo__title">jaxtransform3d 0.0.0 documentation</p>
   
 </a></div>
     
@@ -562,12 +568,25 @@
     <span class="n">vec</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
     <span class="n">vec_norm</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">vec</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="n">axis</span> <span class="o">=</span> <span class="n">norm_vector</span><span class="p">(</span><span class="n">vec</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">vec_norm</span><span class="p">)</span>
+    <span class="c1"># Alternative solution:</span>
+    <span class="c1"># angle = 2.0 * jnp.atan2(jnp.linalg.norm(vec, axis=-1), real)</span>
     <span class="n">angle</span> <span class="o">=</span> <span class="n">norm_angle</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">real</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)))</span>
 
-    <span class="n">angle_nonzero</span> <span class="o">=</span> <span class="p">(</span><span class="n">vec_norm</span> <span class="o">&gt;=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="c1"># Alternative solution: small angle Taylor series expansion based on</span>
+    <span class="c1"># https://github.com/scipy/scipy/blob/ae25ba2385e62d5372a47ed59f9cfddc5ab3dc6a/scipy/spatial/transform/_rotation.pyx#L1973</span>
+    <span class="c1"># s = jnp.sin(0.5 * angle)</span>
+    <span class="c1"># s_safe = jnp.where(s == 0, 1.0, s)</span>
+    <span class="c1"># scale = angle / s_safe</span>
+    <span class="c1"># angle_p2 = angle * angle</span>
+    <span class="c1"># scale_taylor = 2.0 + angle_p2 / 12.0 + angle_p2 * angle_p2 * (7.0 / 2880.0)</span>
+    <span class="c1"># scale = jnp.where(angle &lt; 1e-3, scale_taylor, scale)</span>
+    <span class="c1"># axis_angle = scale[..., jnp.newaxis] * vec</span>
 
-    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">angle_nonzero</span><span class="p">,</span> <span class="n">axis</span> <span class="o">*</span> <span class="n">angle</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="mf">0.0</span><span class="p">)</span></div>
+    <span class="n">axis</span> <span class="o">=</span> <span class="n">norm_vector</span><span class="p">(</span><span class="n">vec</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">vec_norm</span><span class="p">)</span>
+    <span class="n">axis_angle</span> <span class="o">=</span> <span class="n">axis</span> <span class="o">*</span> <span class="n">angle</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+
+    <span class="n">angle_nonzero</span> <span class="o">=</span> <span class="p">(</span><span class="n">vec_norm</span> <span class="o">&gt;=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">angle_nonzero</span><span class="p">,</span> <span class="n">axis_angle</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
 
 </pre></div>
 

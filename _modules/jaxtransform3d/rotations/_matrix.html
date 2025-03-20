@@ -111,8 +111,14 @@
   
   
   
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.png" class="logo__image only-light" alt="pytransform3d 0.0.0"/>
+    <img src="../../../_static/logo.png" class="logo__image only-dark pst-js-only" alt="pytransform3d 0.0.0"/>
   
-    <p class="title logo__title">jaxtransform3d 0.0.0 documentation</p>
   
 </a></div>
     
@@ -306,6 +312,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jax.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArrayLike</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm_vector</span>
+
 
 <div class="viewcode-block" id="matrix_inverse">
 <a class="viewcode-back" href="../../../_apidoc/jaxtransform3d.rotations.matrix_inverse.html#jaxtransform3d.rotations.matrix_inverse">[docs]</a>
@@ -419,10 +427,10 @@
 <span class="sd">    &gt;&gt;&gt; R = matrix_from_compact_axis_angle(a)</span>
 <span class="sd">    &gt;&gt;&gt; v = jnp.array([[0.5, 1.0, 2.5], [1, 2, 3]])</span>
 <span class="sd">    &gt;&gt;&gt; apply_matrix(R[0], v[0]).round(7)</span>
-<span class="sd">    Array([ 0.5..., -2.5...,  0.9999...], ...)</span>
+<span class="sd">    Array([ 0.5, -2.5,  1. ], ...)</span>
 <span class="sd">    &gt;&gt;&gt; apply_matrix(R, v)</span>
-<span class="sd">    Array([[ 0.49999997, -2.5       ,  0.9999999 ],</span>
-<span class="sd">           [ 3.        ,  1.9999999 , -1.0000001 ]], dtype=float32)</span>
+<span class="sd">    Array([[ 0.5, -2.5,  1. ],</span>
+<span class="sd">           [ 3. ,  2. , -1. ]], dtype=float32)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">R</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
     <span class="n">v</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
@@ -512,6 +520,11 @@
 <span class="sd">    &gt;&gt;&gt; compact_axis_angle_from_matrix(</span>
 <span class="sd">    ...     jnp.array([[0., 0., -1.], [0., 1., 0.], [1., 0., 0.]]))</span>
 <span class="sd">    Array([ 0..., -1.57...,  0...], dtype=...)</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] Williams, A. (n.d.). Computing the exponential map on SO(3).</span>
+<span class="sd">       https://arwilliams.github.io/so3-exp.pdf</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">R</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">jnp</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">R</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">floating</span><span class="p">):</span>
@@ -520,39 +533,43 @@
     <span class="n">chex</span><span class="o">.</span><span class="n">assert_axis_dimension</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">expected</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
     <span class="n">chex</span><span class="o">.</span><span class="n">assert_axis_dimension</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">expected</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 
-    <span class="n">instances_shape</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-    <span class="n">R</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-
-    <span class="n">traces</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;nii&quot;</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
-    <span class="n">cos_angle</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">((</span><span class="n">traces</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="c1"># determine angle from traces</span>
+    <span class="n">traces</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;...ii&quot;</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+    <span class="n">cos_angle</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">traces</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
     <span class="n">angle</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">cos_angle</span><span class="p">)</span>
 
-    <span class="n">axis_unnormalized</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">column_stack</span><span class="p">(</span>
-        <span class="p">(</span><span class="n">R</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">R</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">R</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="c1"># same as:</span>
+    <span class="c1"># RT = R.transpose(tuple(range(R.ndim - 2)) + (R.ndim - 1, R.ndim - 2))</span>
+    <span class="c1"># matrix_unnormalized = R - RT</span>
+    <span class="c1"># axis_unnormalized = cross_product_vector(matrix_unnormalized)</span>
+    <span class="n">axis_unnormalized</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+        <span class="p">(</span>
+            <span class="n">R</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+            <span class="n">R</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+            <span class="n">R</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">R</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="p">),</span>
+        <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">R_diag</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;nii-&gt;ni&quot;</span><span class="p">,</span> <span class="n">R</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-    <span class="n">eeT_diag</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">R_diag</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="c1"># Direct solution with correction for small angles with Taylor series.</span>
+    <span class="c1"># We do not use it because normalizing the axis seems to be more accurate.</span>
+    <span class="c1"># s = jnp.sin(angle)</span>
+    <span class="c1"># factor = 0.5 * angle / jnp.where(s == 0.0, 1.0, s)</span>
+    <span class="c1"># factor_taylor = 0.5 + angle**2 / 12.0 + 7.0 * angle**4 / 720.0  # + O(theta**6)</span>
+    <span class="c1"># factor = jnp.where(angle &lt; 1e-4, factor_taylor, factor)</span>
+    <span class="c1"># axis_angle = axis_unnormalized * factor[..., jnp.newaxis]</span>
+
+    <span class="c1"># special case: angle close to pi</span>
+    <span class="n">R_diag</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;...ii-&gt;...i&quot;</span><span class="p">,</span> <span class="n">R</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
     <span class="n">signs</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">axis_unnormalized</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">R</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span>
-    <span class="n">axis_close_to_pi</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">eeT_diag</span><span class="p">)</span> <span class="o">*</span> <span class="n">signs</span>
-
-    <span class="n">angle_close_to_pi</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-4</span>
-    <span class="n">axis</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-        <span class="n">angle_close_to_pi</span><span class="p">[:,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis_close_to_pi</span><span class="p">,</span> <span class="n">axis_unnormalized</span>
+    <span class="n">axis_close_to_pi</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">R_diag</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">))</span> <span class="o">*</span> <span class="n">signs</span>
+    <span class="n">angle_close_to_pi</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">angle</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-4</span>
+    <span class="n">axis_unnormalized</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">angle_close_to_pi</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis_close_to_pi</span><span class="p">,</span> <span class="n">axis_unnormalized</span>
     <span class="p">)</span>
-    <span class="n">axis</span> <span class="o">=</span> <span class="n">axis</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="n">axis</span> <span class="o">=</span> <span class="n">norm_vector</span><span class="p">(</span><span class="n">axis_unnormalized</span><span class="p">)</span>
 
-    <span class="n">angle_nonzero</span> <span class="o">=</span> <span class="n">angle</span> <span class="o">!=</span> <span class="mf">0.0</span>
-    <span class="n">axis</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">angle_nonzero</span><span class="p">[:,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-
-    <span class="n">axis_angle</span> <span class="o">=</span> <span class="n">axis</span> <span class="o">*</span> <span class="n">angle</span><span class="p">[:,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
-
-    <span class="k">if</span> <span class="n">instances_shape</span><span class="p">:</span>
-        <span class="n">axis_angle</span> <span class="o">=</span> <span class="n">axis_angle</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">instances_shape</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,))</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">axis_angle</span> <span class="o">=</span> <span class="n">axis_angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-    <span class="k">return</span> <span class="n">axis_angle</span></div>
+    <span class="k">return</span> <span class="n">axis</span> <span class="o">*</span> <span class="n">angle</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span></div>
 
 </pre></div>
 

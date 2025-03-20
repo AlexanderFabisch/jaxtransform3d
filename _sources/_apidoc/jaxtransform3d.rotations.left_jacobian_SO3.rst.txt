@@ -1,0 +1,6 @@
+﻿jaxtransform3d.rotations.left\_jacobian\_SO3
+============================================
+
+.. currentmodule:: jaxtransform3d.rotations
+
+.. autofunction:: left_jacobian_SO3
