@@ -7,6 +7,31 @@ from jax.typing import ArrayLike
 two_pi = 2.0 * jnp.pi
 
 
+def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
+    """Differentiable norm.
+
+    The derivative of sqrt(x) is 1 / (2 * sqrt(x)), so it is close to inf
+    at x == 0 and might exceed the representable range of numbers by the
+    floating point type when x is close to 0 as the derivative might become
+    very large. So we ensure that the norm does not become too small.
+
+    Parameters
+    ----------
+    x : array, any shape
+        Array of which we want to compute the norm.
+
+    axis
+        Axis over which we compute the norm.
+
+    Returns
+    -------
+    x_norm : jnp.ndarray
+        Norm of x along given axis.
+    """
+    squared_norm = (x * x).sum(axis=axis)
+    return jnp.sqrt(jnp.maximum(squared_norm, jnp.finfo(x.dtype).eps))
+
+
 def norm_angle(a: ArrayLike) -> jax.Array:
     """Normalize angle to (-pi, pi].
 

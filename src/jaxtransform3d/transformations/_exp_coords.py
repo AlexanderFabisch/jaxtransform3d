@@ -9,6 +9,7 @@ from ..rotations import (
     matrix_from_compact_axis_angle,
     quaternion_from_compact_axis_angle,
 )
+from ..utils import differentiable_norm
 from ._transform import create_transform
 
 
@@ -65,7 +66,7 @@ def transform_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.Array:
 
     J = left_jacobian_SO3(axis_angle)
     t = (J @ v_theta[..., jnp.newaxis])[..., 0]
-    angle = jnp.linalg.norm(exp_coords[..., :3], axis=-1)[..., jnp.newaxis]
+    angle = differentiable_norm(exp_coords[..., :3], axis=-1)[..., jnp.newaxis]
     t = jnp.where(angle < jnp.finfo(angle.dtype).eps, v_theta, t)
 
     return create_transform(R, t)
@@ -95,7 +96,7 @@ def dual_quaternion_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.A
 
     J = left_jacobian_SO3(axis_angle)
     t = (J @ v_theta[..., jnp.newaxis])[..., 0]
-    angle = jnp.linalg.norm(exp_coords[..., :3], axis=-1)[..., jnp.newaxis]
+    angle = differentiable_norm(exp_coords[..., :3], axis=-1)[..., jnp.newaxis]
     t = jnp.where(angle < jnp.finfo(angle.dtype).eps, v_theta, t)
 
     t_quat = jnp.concatenate((jnp.zeros_like(t[..., :1]), t), axis=-1)

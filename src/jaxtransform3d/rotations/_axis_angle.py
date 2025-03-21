@@ -3,13 +3,10 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import cross_product_matrix
+from ..utils import cross_product_matrix, differentiable_norm
 
 
-def matrix_from_compact_axis_angle(
-    axis_angle: ArrayLike | None = None,
-    angle: ArrayLike | None = None,
-) -> jax.Array:
+def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.Array:
     r"""Compute rotation matrices from compact axis-angle representations.
 
     This is called exponential map or Rodrigues' formula.
@@ -41,9 +38,6 @@ def matrix_from_compact_axis_angle(
     axis_angle : array-like, shape (..., 3)
         Axes of rotation and rotation angles in compact representation:
         angle * (x, y, z), also known as rotation vector.
-
-    angle : array, shape (...)
-        If the angles have been precomputed, you can pass them here.
 
     Returns
     -------
@@ -80,20 +74,18 @@ def matrix_from_compact_axis_angle(
     if not jnp.issubdtype(axis_angle.dtype, jnp.floating):
         axis_angle = axis_angle.astype(jnp.float64)
 
-    if angle is None:
-        angle = jnp.linalg.norm(axis_angle, axis=-1)
-    else:
-        angle = jnp.asarray(angle)
+    angle = differentiable_norm(axis_angle, axis=-1)
 
     chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
     chex.assert_equal_shape_prefix((axis_angle, angle), prefix_len=axis_angle.ndim - 1)
 
     angle_safe = jnp.where(angle != 0.0, angle, 1.0)  # avoid division by 0
     factor1 = jnp.sin(angle) / angle_safe
-    factor2 = (1.0 - jnp.cos(angle)) / angle_safe**2
+    angle_p2 = angle * angle
+    angle_p2_safe = jnp.where(angle_p2 != 0.0, angle_p2, 1.0)  # avoid division by 0
+    factor2 = (1.0 - jnp.cos(angle)) / angle_p2_safe
 
-    angle_p2 = angle**2
-    angle_p4 = angle**4
+    angle_p4 = angle_p2 * angle_p2
     factor1_taylor = 1.0 - angle_p2 / 6.0 + angle_p4 / 120.0  # + O(angle**6)
     factor2_taylor = 0.5 - angle_p2 / 24.0 + angle_p4 / 720.0  # + O(angle**6)
 
