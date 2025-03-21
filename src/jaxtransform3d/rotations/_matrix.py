@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import norm_vector
+from ..utils import differentiable_arccos, norm_vector
 
 
 def matrix_inverse(R: ArrayLike) -> jax.Array:
@@ -215,8 +215,8 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
 
     # determine angle from traces
     traces = jnp.einsum("...ii", R)
-    cos_angle = jnp.clip(0.5 * (traces - 1.0), -1.0, 1.0)
-    angle = jnp.arccos(cos_angle)
+    cos_angle = 0.5 * (traces - 1.0)
+    angle = differentiable_arccos(cos_angle)
 
     # same as:
     # RT = R.transpose(tuple(range(R.ndim - 2)) + (R.ndim - 1, R.ndim - 2))

@@ -32,6 +32,26 @@ def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
     return jnp.sqrt(jnp.maximum(squared_norm, jnp.finfo(x.dtype).eps))
 
 
+def differentiable_arccos(x: jnp.ndarray) -> jnp.ndarray:
+    """Differentiable arccos.
+
+    The derivative of arccos(x) is -1 / sqrt(1 - x**2) and it will become
+    infinity at -1 and 1, so we ensure that we do not come to close.
+
+    Parameters
+    ----------
+    x : array, any shape
+        Array of which we want to compute arccos.
+    """
+    x = jnp.where(
+        jnp.abs(1.0 - x) < jnp.finfo(x.dtype).eps, 1.0 - jnp.finfo(x.dtype).eps, x
+    )
+    x = jnp.where(
+        jnp.abs(-1.0 - x) < jnp.finfo(x.dtype).eps, -1.0 + jnp.finfo(x.dtype).eps, x
+    )
+    return jnp.arccos(x)
+
+
 def norm_angle(a: ArrayLike) -> jax.Array:
     """Normalize angle to (-pi, pi].
 
