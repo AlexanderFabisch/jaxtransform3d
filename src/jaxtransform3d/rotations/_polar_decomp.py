@@ -28,7 +28,8 @@ def norm_matrix(R: ArrayLike) -> jax.Array:
     * and must be orthogonal to each other (3 constraints)
 
     A more compact representation of these constraints is
-    :math:`\boldsymbol R^T \boldsymbol R = \boldsymbol I`.
+    :math:`\boldsymbol R^T \boldsymbol R = \boldsymbol I`. In addition,
+    to ensure right-handedness of the basis :math:`det(R) = 1`.
 
     Because of numerical problems, a rotation matrix might not satisfy the
     constraints anymore. This function will enforce them with Gram-Schmidt
