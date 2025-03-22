@@ -175,7 +175,7 @@ def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
 
 
 def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
-    """Compute axis-angle from rotation matrix.
+    r"""Compute axis-angle from rotation matrix.
 
     This operation is called logarithmic map. Note that there are two possible
     solutions for the rotation axis when the angle is 180 degrees (pi).

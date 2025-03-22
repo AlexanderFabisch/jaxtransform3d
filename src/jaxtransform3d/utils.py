@@ -7,6 +7,11 @@ from jax.typing import ArrayLike
 two_pi = 2.0 * jnp.pi
 
 
+def min_diff_norm(x):
+    """Minimum differentiable norm."""
+    return jnp.sqrt(jnp.finfo(x.dtype).smallest_subnormal)
+
+
 def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
     """Differentiable Euclidean norm.
 
