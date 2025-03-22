@@ -43,12 +43,7 @@ def differentiable_arccos(x: jnp.ndarray) -> jnp.ndarray:
     x : array, any shape
         Array of which we want to compute arccos.
     """
-    x = jnp.where(
-        jnp.abs(1.0 - x) < jnp.finfo(x.dtype).eps, 1.0 - jnp.finfo(x.dtype).eps, x
-    )
-    x = jnp.where(
-        jnp.abs(-1.0 - x) < jnp.finfo(x.dtype).eps, -1.0 + jnp.finfo(x.dtype).eps, x
-    )
+    x = jnp.clip(x, -1.0 + jnp.finfo(x.dtype).eps, 1.0 - jnp.finfo(x.dtype).eps)
     return jnp.arccos(x)
 
 
