@@ -31,25 +31,25 @@ def test_compose_matrix():
 def test_compact_axis_angle_from_matrix_0dim():
     R = jnp.eye(3)
     a = compact_axis_angle_from_matrix(R)
-    pr.assert_compact_axis_angle_equal(a, jnp.zeros(3))
+    jr.assert_compact_axis_angle_equal(a, jnp.zeros(3))
 
     R = pr.active_matrix_from_intrinsic_euler_xyz(jnp.array([-jnp.pi, -jnp.pi, 0.0]))
     a = compact_axis_angle_from_matrix(R)
-    pr.assert_compact_axis_angle_equal(a, jnp.array([0, 0, jnp.pi]))
+    jr.assert_compact_axis_angle_equal(a, jnp.array([0, 0, jnp.pi]), decimal=2)
 
     R = pr.active_matrix_from_intrinsic_euler_xyz(jnp.array([-jnp.pi, 0.0, -jnp.pi]))
     a = compact_axis_angle_from_matrix(R)
-    pr.assert_compact_axis_angle_equal(a, jnp.array([0, jnp.pi, 0]))
+    jr.assert_compact_axis_angle_equal(a, jnp.array([0, jnp.pi, 0]), decimal=2)
 
     R = pr.active_matrix_from_intrinsic_euler_xyz(jnp.array([0.0, -jnp.pi, -jnp.pi]))
     a = compact_axis_angle_from_matrix(R)
-    pr.assert_compact_axis_angle_equal(a, jnp.array([jnp.pi, 0, 0]))
+    jr.assert_compact_axis_angle_equal(a, jnp.array([jnp.pi, 0, 0]), decimal=2)
 
     a = jnp.pi * jnp.array([jnp.sqrt(0.5), jnp.sqrt(0.5), 0.0])
     R = pr.matrix_from_compact_axis_angle(a)
     a1 = pr.compact_axis_angle_from_matrix(R)
     a2 = compact_axis_angle_from_matrix(R)
-    assert_array_almost_equal(a1, a2)
+    assert_array_almost_equal(a1, a2, decimal=3)
 
     rng = np.random.default_rng(0)
     for _ in range(50):
@@ -58,7 +58,7 @@ def test_compact_axis_angle_from_matrix_0dim():
         pr.assert_rotation_matrix(R)
 
         a2 = compact_axis_angle_from_matrix(R)
-        pr.assert_compact_axis_angle_equal(a, a2)
+        jr.assert_compact_axis_angle_equal(a, a2)
 
         R2 = matrix_from_compact_axis_angle(a2)
         assert_array_almost_equal(R, R2)

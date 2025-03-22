@@ -10,6 +10,7 @@ is non-redundant, continuous, and free of singularities.
 """
 
 from ._axis_angle import (
+    assert_compact_axis_angle_equal,
     matrix_from_compact_axis_angle,
     quaternion_from_compact_axis_angle,
 )
@@ -37,6 +38,7 @@ from ._quaternion import (
 __all__ = [
     "matrix_from_compact_axis_angle",
     "quaternion_from_compact_axis_angle",
+    "assert_compact_axis_angle_equal",
     "matrix_inverse",
     "apply_matrix",
     "compose_matrices",

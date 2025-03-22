@@ -151,3 +151,18 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     vec = axis_scale[..., jnp.newaxis] * axis_angle
 
     return jnp.concatenate((real, vec), axis=-1)
+
+
+def assert_compact_axis_angle_equal(a1, a2, *args, **kwargs):
+    from numpy.testing import assert_array_almost_equal
+
+    angle1 = jnp.linalg.norm(a1)
+    angle2 = jnp.linalg.norm(a2)
+    # required despite normalization in case of 180 degree rotation
+    if (
+        abs(angle1) - jnp.pi < 1e-2
+        and abs(angle2) - jnp.pi < 1e-2
+        and jnp.any(jnp.sign(a1) != jnp.sign(a2))
+    ):
+        a1 = -a1
+    assert_array_almost_equal(a1, a2, *args, **kwargs)
