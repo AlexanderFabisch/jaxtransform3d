@@ -8,19 +8,20 @@ two_pi = 2.0 * jnp.pi
 
 
 def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
-    """Differentiable norm.
+    """Differentiable Euclidean norm.
 
-    The derivative of sqrt(x) is 1 / (2 * sqrt(x)), so it is close to inf
-    at x == 0 and might exceed the representable range of numbers by the
-    floating point type when x is close to 0 as the derivative might become
-    very large. So we ensure that the norm does not become too small.
+    The derivative of sqrt(x) is 1 / (2 * sqrt(x)), so it is inf at x == 0 and
+    might exceed the representable range of numbers by the floating point type
+    when x is close to 0 as the derivative might become very large. So we ensure
+    that the squared norm does not become too small by clipping it at
+    `jnp.finfo(x.dtype).smallest_subnormal` before computing its square root.
 
     Parameters
     ----------
     x : array, any shape
         Array of which we want to compute the norm.
 
-    axis
+    axis : int or None
         Axis over which we compute the norm.
 
     Returns
@@ -36,7 +37,8 @@ def differentiable_arccos(x: jnp.ndarray) -> jnp.ndarray:
     """Differentiable arccos.
 
     The derivative of arccos(x) is -1 / sqrt(1 - x**2) and it will become
-    infinity at -1 and 1, so we ensure that we do not come to close.
+    infinity at -1 and 1, so we ensure that we do not come to close by clipping
+    values in the `jnp.finfo(x.dtype).eps` vicinity of 1 and -1.
 
     Parameters
     ----------
