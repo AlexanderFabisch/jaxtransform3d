@@ -29,7 +29,7 @@ def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
         Norm of x along given axis.
     """
     squared_norm = (x * x).sum(axis=axis)
-    return jnp.sqrt(jnp.maximum(squared_norm, jnp.finfo(x.dtype).eps))
+    return jnp.sqrt(jnp.maximum(squared_norm, jnp.finfo(x.dtype).smallest_subnormal))
 
 
 def differentiable_arccos(x: jnp.ndarray) -> jnp.ndarray:

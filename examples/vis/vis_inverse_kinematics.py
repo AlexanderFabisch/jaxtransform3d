@@ -236,7 +236,7 @@ jac = jax.jit(jax.jacfwd(forward))
 # %%
 # and define the joint angles.
 thetas = jnp.zeros(6)
-for joint_name, theta in zip(joint_names, thetas, strict=False):
+for joint_name, theta in zip(joint_names, thetas, strict=True):
     tm.set_joint(joint_name, theta)
 key = jax.random.PRNGKey(42)
 
