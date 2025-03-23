@@ -12,10 +12,20 @@ from ..rotations import (
 
 
 def norm_dual_quaternion(dual_quat):
-    """Normalize unit dual quaternion.
+    r"""Normalize unit dual quaternion.
 
     A unit dual quaternion has a real quaternion with unit norm and an
     orthogonal real part. Both properties are enforced by this function.
+
+    We use a two-step normalization procedure (see [2]_ for details):
+
+    1. Multiply the dual quaternion :math:`\sigma = p + q \epsilon` with the
+       normalization factor :math:`\frac{1}{\sqrt{s}} = \frac{1}{\sqrt{p^T p}}`
+       for the real quaternion to obtain :math:`\sigma' = \frac{\sigma}{\sqrt{s}}`,
+       which ensures that the norm is :math:`1 + t' \epsilon`.
+    2. Multiply :math:`\sigma' = p' + q' \epsilon` with the normalization factor
+       :math:`(1 - \frac{t'}{2} \epsilon)` for the dual quaternion (since s' = 1)
+       to obtain :math:`\sigma'' = p' + q' \epsilon - p'^T q' p' \epsilon`.
 
     Parameters
     ----------
@@ -29,15 +39,17 @@ def norm_dual_quaternion(dual_quat):
         Unit dual quaternion to represent transform with orthogonal real and
         dual quaternion.
 
-    References
-    ----------
-    .. [1] enki (2023). Properly normalizing a dual quaternion.
-       https://stackoverflow.com/a/76313524
-
     See Also
     --------
     dual_quaternion_squared_norm
         Computes the squared norm of a dual quaternion.
+
+    References
+    ----------
+    .. [1] enki (2023). Properly normalizing a dual quaternion.
+       https://stackoverflow.com/a/76313524
+    .. [2] Alexander Fabisch (2025). Normalizing dual quaternions.
+       https://alexanderfabisch.github.io/normalizing-dual-quaternions.html
     """
     dual_quat = jnp.asarray(dual_quat)
 
@@ -234,6 +246,8 @@ def apply_dual_quaternion(dual_quat: ArrayLike, v: ArrayLike) -> jax.Array:
 def exponential_coordinates_from_dual_quaternion(dual_quat: ArrayLike) -> jax.Array:
     """Compute dual quaternion from exponential coordinates.
 
+    This operation is called logarithmic map.
+
     Parameters
     ----------
     dual_quat : array-like, shape (..., 8)
@@ -243,6 +257,10 @@ def exponential_coordinates_from_dual_quaternion(dual_quat: ArrayLike) -> jax.Ar
     -------
     exp_coords : array, shape (..., 6)
         Exponential coordinates.
+
+    See also
+    --------
+    dual_quaternion_from_exponential_coordinates : Exponential map.
     """
     dual_quat = jnp.asarray(dual_quat)
 
