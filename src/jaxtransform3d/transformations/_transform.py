@@ -199,6 +199,12 @@ def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
         where S is the screw axis, the first 3 components are related to
         rotation and the last 3 components are related to translation.
         Theta is the rotation angle and h * theta the translation.
+
+    See also
+    --------
+    transform_from_exponential_coordinates : Exponential map.
+    exponential_coordinates_from_dual_quaternion
+        Logarithmic map for dual quaternions.
     """
     T = jnp.asarray(T)
 

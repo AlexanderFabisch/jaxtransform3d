@@ -54,6 +54,12 @@ def transform_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.Array:
     -------
     T : array, shape (..., 4, 4)
         Transformation matrix.
+
+    See also
+    --------
+    exponential_coordinates_from_transform : Logarithmic map.
+    dual_quaternion_from_exponential_coordinates
+        Exponential map for dual quaternions.
     """
     exp_coords = jnp.asarray(exp_coords)
 
@@ -83,7 +89,13 @@ def dual_quaternion_from_exponential_coordinates(exp_coords: ArrayLike) -> jax.A
     Returns
     -------
     dual_quat : array, shape (..., 8)
-        Dual quaternion
+        Dual quaternion.
+
+    See also
+    --------
+    transform_from_exponential_coordinates
+        Exponential map for transformation matrices.
+    exponential_coordinates_from_dual_quaternion : Logarithmic map.
     """
     exp_coords = jnp.asarray(exp_coords)
 

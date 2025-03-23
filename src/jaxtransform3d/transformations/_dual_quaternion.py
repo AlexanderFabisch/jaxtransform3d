@@ -261,6 +261,8 @@ def exponential_coordinates_from_dual_quaternion(dual_quat: ArrayLike) -> jax.Ar
     See also
     --------
     dual_quaternion_from_exponential_coordinates : Exponential map.
+    exponential_coordinates_from_transform
+        Logarithmic map for transformation matrices.
     """
     dual_quat = jnp.asarray(dual_quat)
 
