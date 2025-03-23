@@ -33,11 +33,13 @@ def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.A
         + (1 - \cos{\theta}) \left[\hat{\boldsymbol{\omega}}\right]^2.
         \end{eqnarray}
 
+    For small angles we use a Taylor series approximation.
+
     Parameters
     ----------
     axis_angle : array-like, shape (..., 3)
-        Axes of rotation and rotation angles in compact representation:
-        angle * (x, y, z), also known as rotation vector.
+        Axis of rotation and rotation angle in compact form (also known as rotation
+        vector): angle * (x, y, z) or :math:`\hat{\boldsymbol{\omega}} \theta`.
 
     Returns
     -------
@@ -64,6 +66,10 @@ def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.A
            [[ 0.96900..., -0.22328..., -0.10572...],
             [ 0.20437...,  0.96493..., -0.16471...],
             [ 0.13879...,  0.13799...,  0.98065...]]], dtype=...)
+
+    See also
+    --------
+    quaternion_from_compact_axis_angle : Exponential map for quaternions.
 
     References
     ----------
@@ -104,18 +110,39 @@ def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.A
 
 
 def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
-    """Compute quaternion from axis-angle.
+    r"""Compute quaternion from axis-angle.
 
     This operation is called exponential map.
 
+    Given a compact axis-angle representation (rotation vector)
+    :math:`\hat{\boldsymbol{\omega}} \theta \in \mathbb{R}^3`, we compute
+    the unit quaternion :math:`\boldsymbol{q} \in S^3` as
+
+    .. math::
+
+        \boldsymbol{q}(\hat{\boldsymbol{\omega}} \theta)
+        =
+        Exp(\hat{\boldsymbol{\omega}} \theta)
+        =
+        \left(
+        \begin{array}{c}
+        \cos{\frac{\theta}{2}}\\
+        \hat{\boldsymbol{\omega}} \sin{\frac{\theta}{2}}
+        \end{array}
+        \right).
+
+
+    For small angles we use a Taylor series approximation.
+
     Parameters
     ----------
-    axis_angle : array-like, shape (3,)
-        Axis of rotation and rotation angle: angle * (x, y, z)
+    axis_angle : array-like, shape (..., 3)
+        Axis of rotation and rotation angle in compact form (also known as rotation
+        vector): angle * (x, y, z) or :math:`\hat{\boldsymbol{\omega}} \theta`.
 
     Returns
     -------
-    q : array, shape (4,)
+    q : array, shape (..., 4)
         Unit quaternion to represent rotation: (w, x, y, z)
 
     Examples
@@ -132,6 +159,10 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     >>> quaternion_from_compact_axis_angle(a)
     Array([[ 0.9619..., -0.0139...,  0.2305...,  0.1459...],
            [ 0.9892...,  0.0764..., -0.0617...,  0.1080...]], ...)
+
+    See also
+    --------
+    matrix_from_compact_axis_angle : Exponential map for rotation matrices.
     """
     axis_angle = jnp.asarray(axis_angle)
 
