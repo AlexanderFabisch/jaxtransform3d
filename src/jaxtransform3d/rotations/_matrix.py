@@ -25,6 +25,10 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
     R_inv : array, shape (..., 3, 3)
         Inverted rotation matrix.
 
+    See also
+    --------
+    quaternion_conjugate : Inverts the rotation represented by a unit quaternion.
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -103,6 +107,10 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     w : array, shape (..., 3) or (3,)
         3d vector.
 
+    See also
+    --------
+    apply_quaternion : Apply rotation represented by a unit quaternion.
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -154,6 +162,10 @@ def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
     R1_R2 : array, shape (..., 3, 3) or (3, 3)
         Composed rotation matrix.
 
+    See also
+    --------
+    compose_quaternions : Compose two quaternions.
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -195,6 +207,11 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     a : array, shape (..., 3)
         Axis of rotation and rotation angle: angle * (x, y, z). The angle is
         constrained to [0, pi].
+
+    See also
+    --------
+    matrix_from_compact_axis_angle : Exponential map.
+    compact_axis_angle_from_quaternion : Logarithmic map for quaternions.
 
     Examples
     --------

@@ -46,6 +46,16 @@ def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.A
     R : array, shape (..., 3, 3)
         Rotation matrices
 
+    See also
+    --------
+    compact_axis_angle_from_matrix : Logarithmic map.
+    quaternion_from_compact_axis_angle : Exponential map for quaternions.
+
+    References
+    ----------
+    .. [1] Williams, A. (n.d.). Computing the exponential map on SO(3).
+       https://arwilliams.github.io/so3-exp.pdf
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -66,15 +76,6 @@ def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.A
            [[ 0.96900..., -0.22328..., -0.10572...],
             [ 0.20437...,  0.96493..., -0.16471...],
             [ 0.13879...,  0.13799...,  0.98065...]]], dtype=...)
-
-    See also
-    --------
-    quaternion_from_compact_axis_angle : Exponential map for quaternions.
-
-    References
-    ----------
-    .. [1] Williams, A. (n.d.). Computing the exponential map on SO(3).
-       https://arwilliams.github.io/so3-exp.pdf
     """
     axis_angle = jnp.asarray(axis_angle)
     if not jnp.issubdtype(axis_angle.dtype, jnp.floating):
@@ -145,6 +146,11 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     q : array, shape (..., 4)
         Unit quaternion to represent rotation: (w, x, y, z)
 
+    See also
+    --------
+    compact_axis_angle_from_quaternion : Logarithmic map.
+    matrix_from_compact_axis_angle : Exponential map for rotation matrices.
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -159,10 +165,6 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     >>> quaternion_from_compact_axis_angle(a)
     Array([[ 0.9619..., -0.0139...,  0.2305...,  0.1459...],
            [ 0.9892...,  0.0764..., -0.0617...,  0.1080...]], ...)
-
-    See also
-    --------
-    matrix_from_compact_axis_angle : Exponential map for rotation matrices.
     """
     axis_angle = jnp.asarray(axis_angle)
 

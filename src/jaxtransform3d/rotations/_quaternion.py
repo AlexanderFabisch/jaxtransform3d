@@ -19,6 +19,10 @@ def norm_quaternion(q: ArrayLike) -> jax.Array:
     q_norm : array, shape (..., 4)
         Normalized quaternion.
 
+    See also
+    --------
+    norm_matrix : Normalizes a rotation matrix.
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -45,7 +49,7 @@ def compose_quaternions(q1: ArrayLike, q2: ArrayLike) -> jax.Array:
 
     If the two quaternions are divided up into scalar part and vector part
     each, i.e.,
-    :math:`\boldsymbol{q} = (w, \boldsymbol{v}), w \in \mathbb{R},
+    :math:`\boldsymbol{q} = (w, \boldsymbol{v}) \in \mathbb{H}, w \in \mathbb{R},
     \boldsymbol{v} \in \mathbb{R}^3`, then the quaternion product is
 
     .. math::
@@ -69,7 +73,11 @@ def compose_quaternions(q1: ArrayLike, q2: ArrayLike) -> jax.Array:
     -------
     q12 : array, shape (..., 4)
         Quaternion that represents the concatenated rotation
-        :math:`\boldsymbol{q}_1\boldsymbol{q}_2`.
+        :math:`\boldsymbol{q}_1\boldsymbol{q}_2` as defined above.
+
+    See also
+    --------
+    compose_matrices : Compose two rotation matrices.
 
     Examples
     --------
@@ -135,6 +143,10 @@ def quaternion_conjugate(q: ArrayLike) -> jax.Array:
     q_c : array-like, shape (..., 4)
         Conjugate (w, -x, -y, -z).
 
+    See also
+    --------
+    matrix_inverse : Invert rotation matrix.
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -190,6 +202,10 @@ def apply_quaternion(q: ArrayLike, v: ArrayLike) -> jax.Array:
     w : array, shape (..., 3)
         3d vector
 
+    See also
+    --------
+    apply_matrix : Apply rotation matrix to vector.
+
     Examples
     --------
     >>> import jax.numpy as jnp
@@ -227,6 +243,11 @@ def compact_axis_angle_from_quaternion(q: ArrayLike) -> jax.Array:
     a : array, shape (..., 3)
         Axis of rotation and rotation angle: angle * (x, y, z). The angle is
         constrained to [0, pi) so that the mapping is unique.
+
+    See also
+    --------
+    quaternion_from_compact_axis_angle : Exponential map.
+    compact_axis_angle_from_matrix : Logarithmic map for rotation matrix.
 
     Examples
     --------

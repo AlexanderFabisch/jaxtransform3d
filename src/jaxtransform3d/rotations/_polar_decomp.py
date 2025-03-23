@@ -50,6 +50,8 @@ def norm_matrix(R: ArrayLike) -> jax.Array:
     robust_polar_decomposition
         A more expensive orthonormalization method that spreads the error more
         evenly between the basis vectors.
+    norm_quaternion
+        Normalizes a quaternion.
 
     Examples
     --------
