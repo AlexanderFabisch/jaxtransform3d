@@ -10,11 +10,31 @@ jaxtransform3d
    api
    _auto_examples/index
 
+----
+Idea
+----
+
 This library is still experimental and a lot of things are subject to change,
 e.g., the name. The core idea is to create a version of
 https://github.com/dfki-ric/pytransform3d
 that is JIT-compiled, executable on GPU, differentiable, and inherently
 vectorized.
+
+--------
+Citation
+--------
+
+If you use jaxtransform3d for a scientific publication, I would appreciate
+citation of the following paper for now, since jaxtransform3d is a spin-off
+of pytransform3d:
+
+Fabisch, A. (2019). pytransform3d: 3D Transformations for Python.
+Journal of Open Source Software, 4(33), 1159,
+https://doi.org/10.21105/joss.01159
+
+----------------
+Maybe not so FAQ
+----------------
 
 **Why should it be inherently vectorized?**
 
@@ -40,14 +60,10 @@ mostly compatible with pytransform3d though. This library will never get any
 Euler angle related functions. Nobody wants to differentiate through Euler
 angle related code.
 
---------
-Citation
---------
+**The library does not have a real user guide. How do I start?**
 
-If you use jaxtransform3d for a scientific publication, I would appreciate
-citation of the following paper for now, since jaxtransform3d is a spin-off
-of pytransform3d:
-
-Fabisch, A. (2019). pytransform3d: 3D Transformations for Python.
-Journal of Open Source Software, 4(33), 1159,
-https://doi.org/10.21105/joss.01159
+To understand basic concepts, look at pytransform3d's documentation:
+https://dfki-ric.github.io/pytransform3d/.
+This library is documented through the API documentation and the examples.
+The examples should give you an idea of how to use it with JAX' vectorization,
+differentiation, and JIT-compilation functionality.
