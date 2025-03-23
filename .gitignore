@@ -1,6 +1,7 @@
 .idea
 *.egg-info
 __pycache__
+.ipynb_checkpoints
 .coverage
 doc/source/_apidoc
 doc/source/_auto_examples
