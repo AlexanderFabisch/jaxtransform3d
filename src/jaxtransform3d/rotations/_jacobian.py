@@ -14,7 +14,10 @@ def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
 
     .. math::
 
-        \boldsymbol{J}(\theta)
+        \frac{\partial Exp(\hat{\boldsymbol{\omega}}\theta)}
+        {\partial\hat{\boldsymbol{\omega}}\theta}
+        =
+        \boldsymbol{J}(\hat{\boldsymbol{\omega}}\theta)
         =
         \frac{\sin{\theta}}{\theta} \boldsymbol{I}
         + \left(\frac{1 - \cos{\theta}}{\theta}\right)
