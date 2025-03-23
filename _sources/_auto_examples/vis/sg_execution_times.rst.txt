@@ -32,6 +32,6 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
-   * - :ref:`sphx_glr__auto_examples_vis_vis_inverse_kinematics.py` (``vis_inverse_kinematics.py``)
+   * - :ref:`sphx_glr__auto_examples_vis_vis_poe.py` (``vis_poe.py``)
      - 00:00.000
      - 0.0

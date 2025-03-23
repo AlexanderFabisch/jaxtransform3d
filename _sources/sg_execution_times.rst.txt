@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:08.146** total execution time for 5 files **from all galleries**:
+**00:12.214** total execution time for 4 files **from all galleries**:
 
 .. container::
 
@@ -33,17 +33,14 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr__auto_examples_autodiff_plot_pointcloud_matching.py` (``../../examples/autodiff/plot_pointcloud_matching.py``)
-     - 00:04.237
+     - 00:05.934
      - 0.0
    * - :ref:`sphx_glr__auto_examples_plots_plot_polar_decomposition.py` (``../../examples/plots/plot_polar_decomposition.py``)
-     - 00:02.140
+     - 00:03.327
      - 0.0
    * - :ref:`sphx_glr__auto_examples_plots_plot_sclerp.py` (``../../examples/plots/plot_sclerp.py``)
-     - 00:01.769
+     - 00:02.953
      - 0.0
    * - :ref:`sphx_glr__auto_examples_autodiff_autodiff_similarity.py` (``../../examples/autodiff/autodiff_similarity.py``)
-     - 00:00.000
-     - 0.0
-   * - :ref:`sphx_glr__auto_examples_vis_vis_inverse_kinematics.py` (``../../examples/vis/vis_inverse_kinematics.py``)
      - 00:00.000
      - 0.0

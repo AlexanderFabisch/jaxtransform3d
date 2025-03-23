@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:04.237** total execution time for 2 files **from _auto_examples/autodiff**:
+**00:05.934** total execution time for 2 files **from _auto_examples/autodiff**:
 
 .. container::
 
@@ -33,7 +33,7 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr__auto_examples_autodiff_plot_pointcloud_matching.py` (``plot_pointcloud_matching.py``)
-     - 00:04.237
+     - 00:05.934
      - 0.0
    * - :ref:`sphx_glr__auto_examples_autodiff_autodiff_similarity.py` (``autodiff_similarity.py``)
      - 00:00.000

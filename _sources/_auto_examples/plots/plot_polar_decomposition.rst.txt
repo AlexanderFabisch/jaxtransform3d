@@ -45,42 +45,42 @@ basis with dashed lines in the last two rows.
 
  .. code-block:: none
 
-    JIT-compiled Gram-Schmidt orthogonalization: 0.10429 s
-    JIT-compiled robust polar decomposition: 0.39783 s
-    Gram-Schmidt orthogonalization: 0.09313 s
-    Robost polar decomposition: 0.88575 s
-    /home/dfki.uni-bremen.de/afabisch/Projekte/pytransform3d/pytransform3d/rotations/_plot.py:54: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.05720187, -0.21547284, -0.08660988],
+    JIT-compiled Gram-Schmidt orthogonalization: 0.33549 s
+    JIT-compiled robust polar decomposition: 0.52874 s
+    Gram-Schmidt orthogonalization: 0.13418 s
+    Robost polar decomposition: 1.31573 s
+    /home/afabisch/Data/anaconda3/envs/jaxtransform3d/lib/python3.12/site-packages/pytransform3d/rotations/_utils.py:486: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.05720187, -0.21547284, -0.08660988],
            [-0.21547284,  0.81166131,  0.32624941],
            [-0.08660988,  0.32624941,  1.13113681]])
-      R = check_matrix(R, strict_check=strict_check)
-    /home/dfki.uni-bremen.de/afabisch/Projekte/pytransform3d/pytransform3d/rotations/_plot.py:54: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.1810075 , -0.14921235, -0.35493586],
+      warnings.warn(error_msg)
+    /home/afabisch/Data/anaconda3/envs/jaxtransform3d/lib/python3.12/site-packages/pytransform3d/rotations/_utils.py:486: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.1810075 , -0.14921235, -0.35493586],
            [-0.14921235,  1.12300223,  0.29258907],
            [-0.35493586,  0.29258907,  0.69599032]])
-      R = check_matrix(R, strict_check=strict_check)
-    /home/dfki.uni-bremen.de/afabisch/Projekte/pytransform3d/pytransform3d/rotations/_plot.py:54: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.02770255, -0.00322832,  0.16408746],
+      warnings.warn(error_msg)
+    /home/afabisch/Data/anaconda3/envs/jaxtransform3d/lib/python3.12/site-packages/pytransform3d/rotations/_utils.py:486: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.02770255, -0.00322832,  0.16408746],
            [-0.00322832,  1.00037621, -0.01912193],
            [ 0.16408746, -0.01912193,  0.97192121]])
-      R = check_matrix(R, strict_check=strict_check)
-    /home/dfki.uni-bremen.de/afabisch/Projekte/pytransform3d/pytransform3d/rotations/_plot.py:54: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.07023019, -0.04169216, -0.25211044],
+      warnings.warn(error_msg)
+    /home/afabisch/Data/anaconda3/envs/jaxtransform3d/lib/python3.12/site-packages/pytransform3d/rotations/_utils.py:486: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.07023019, -0.04169216, -0.25211044],
            [-0.04169216,  1.02475056,  0.14966539],
            [-0.25211044,  0.14966539,  0.90501925]])
-      R = check_matrix(R, strict_check=strict_check)
-    /home/dfki.uni-bremen.de/afabisch/Projekte/pytransform3d/pytransform3d/rotations/_plot.py:54: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 0.8676452 , -0.3266027 , -0.09037511],
+      warnings.warn(error_msg)
+    /home/afabisch/Data/anaconda3/envs/jaxtransform3d/lib/python3.12/site-packages/pytransform3d/rotations/_utils.py:486: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 0.8676452 , -0.3266027 , -0.09037511],
            [-0.3266027 ,  1.12294118,  0.03401938],
            [-0.09037511,  0.03401938,  1.00941359]])
-      R = check_matrix(R, strict_check=strict_check)
-    /home/dfki.uni-bremen.de/afabisch/Projekte/pytransform3d/pytransform3d/rotations/_plot.py:54: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.00451664, -0.06697986,  0.00315241],
+      warnings.warn(error_msg)
+    /home/afabisch/Data/anaconda3/envs/jaxtransform3d/lib/python3.12/site-packages/pytransform3d/rotations/_utils.py:486: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.00451664, -0.06697986,  0.00315241],
            [-0.06697986,  0.99328314, -0.04674896],
            [ 0.00315241, -0.04674896,  1.00220024]])
-      R = check_matrix(R, strict_check=strict_check)
-    /home/dfki.uni-bremen.de/afabisch/Projekte/pytransform3d/pytransform3d/rotations/_plot.py:54: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.06777937, -0.25127454, -0.00681401],
+      warnings.warn(error_msg)
+    /home/afabisch/Data/anaconda3/envs/jaxtransform3d/lib/python3.12/site-packages/pytransform3d/rotations/_utils.py:486: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.06777937, -0.25127454, -0.00681401],
            [-0.25127454,  0.93153558,  0.02526118],
            [-0.00681401,  0.02526118,  1.00068503]])
-      R = check_matrix(R, strict_check=strict_check)
-    /home/dfki.uni-bremen.de/afabisch/Projekte/pytransform3d/pytransform3d/rotations/_plot.py:54: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.01181409, -0.08639439,  0.0648886 ],
+      warnings.warn(error_msg)
+    /home/afabisch/Data/anaconda3/envs/jaxtransform3d/lib/python3.12/site-packages/pytransform3d/rotations/_utils.py:486: UserWarning: Expected rotation matrix, but it failed the test for inversion by transposition. np.dot(R, R.T) gives array([[ 1.01181409, -0.08639439,  0.0648886 ],
            [-0.08639439,  0.63178698, -0.4745189 ],
            [ 0.0648886 , -0.4745189 ,  1.3563989 ]])
-      R = check_matrix(R, strict_check=strict_check)
+      warnings.warn(error_msg)
 
 
 
@@ -174,7 +174,7 @@ basis with dashed lines in the last two rows.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 2.140 seconds)
+   **Total running time of the script:** (0 minutes 3.327 seconds)
 
 
 .. _sphx_glr_download__auto_examples_plots_plot_polar_decomposition.py:
