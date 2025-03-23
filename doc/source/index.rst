@@ -27,6 +27,17 @@ over using vmap is that I don't have to call vmap multiple times when I want
 to vectorize multiple times (e.g., a list of a list of a list of rotation
 matrices).
 
+**Which features will this library have?**
+
+So far the library contains operations to work with transformation matrices and
+dual quaternions: normalization, inversion, composition, application to a
+vector, logarithmic and exponential map. It will stay like this. I will most
+likely add more operations, e.g., specific Jacobians, sampling, operations
+with uncertainty, etc. However, unlike pytransform3d, this library will not
+have any visualization or plotting features. It will not have an equivalent of
+the TransformManager to manage graphs of transformations. The library will be
+mostly compatible with pytransform3d though.
+
 --------
 Citation
 --------
