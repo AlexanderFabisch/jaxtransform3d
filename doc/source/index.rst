@@ -36,7 +36,9 @@ likely add more operations, e.g., specific Jacobians, sampling, operations
 with uncertainty, etc. However, unlike pytransform3d, this library will not
 have any visualization or plotting features. It will not have an equivalent of
 the TransformManager to manage graphs of transformations. The library will be
-mostly compatible with pytransform3d though.
+mostly compatible with pytransform3d though. This library will never get any
+Euler angle related functions. Nobody wants to differentiate through Euler
+angle related code.
 
 --------
 Citation
