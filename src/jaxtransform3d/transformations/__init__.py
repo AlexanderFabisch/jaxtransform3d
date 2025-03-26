@@ -8,6 +8,9 @@ Transformations consist of a rotation and a translation. Those can be
 represented in different ways just like rotations can be expressed
 in different ways. The minimum number of components that are required to
 describe any transformation from :math:`SE(3)` is 6.
+
+We support transformation matrices, unit dual quaternions, and exponential
+coordinates of transformation.
 """
 
 from ._dual_quaternion import (
