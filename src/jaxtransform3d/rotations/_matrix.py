@@ -192,11 +192,6 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     This operation is called logarithmic map. Note that there are two possible
     solutions for the rotation axis when the angle is 180 degrees (pi).
 
-    .. warning::
-
-        This function is not precise at angles close to :math:`\pi` because it
-        clips the arccos of the angle to make it differentiable.
-
     Parameters
     ----------
     R : array-like, shape (..., 3, 3)

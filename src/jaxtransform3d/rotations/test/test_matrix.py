@@ -35,15 +35,15 @@ def test_compact_axis_angle_from_matrix_0dim():
 
     R = pr.active_matrix_from_intrinsic_euler_xyz(jnp.array([-jnp.pi, -jnp.pi, 0.0]))
     a = compact_axis_angle_from_matrix(R)
-    jr.assert_compact_axis_angle_equal(a, jnp.array([0, 0, jnp.pi]), decimal=2)
+    jr.assert_compact_axis_angle_equal(a, jnp.array([0, 0, jnp.pi]))
 
     R = pr.active_matrix_from_intrinsic_euler_xyz(jnp.array([-jnp.pi, 0.0, -jnp.pi]))
     a = compact_axis_angle_from_matrix(R)
-    jr.assert_compact_axis_angle_equal(a, jnp.array([0, jnp.pi, 0]), decimal=2)
+    jr.assert_compact_axis_angle_equal(a, jnp.array([0, jnp.pi, 0]))
 
     R = pr.active_matrix_from_intrinsic_euler_xyz(jnp.array([0.0, -jnp.pi, -jnp.pi]))
     a = compact_axis_angle_from_matrix(R)
-    jr.assert_compact_axis_angle_equal(a, jnp.array([jnp.pi, 0, 0]), decimal=2)
+    jr.assert_compact_axis_angle_equal(a, jnp.array([jnp.pi, 0, 0]))
 
     a = jnp.pi * jnp.array([jnp.sqrt(0.5), jnp.sqrt(0.5), 0.0])
     R = pr.matrix_from_compact_axis_angle(a)

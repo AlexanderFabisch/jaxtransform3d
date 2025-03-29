@@ -38,20 +38,36 @@ def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
     return jnp.sqrt(jnp.maximum(squared_norm, jnp.finfo(x.dtype).smallest_subnormal))
 
 
+@jax.custom_jvp
 def differentiable_arccos(x: jnp.ndarray) -> jnp.ndarray:
     """Differentiable arccos.
 
     The derivative of arccos(x) is -1 / sqrt(1 - x**2) and it will become
     infinity at -1 and 1, so we ensure that we do not come to close by clipping
-    values in the `jnp.finfo(x.dtype).eps` vicinity of 1 and -1.
+    values in the `jnp.finfo(x.dtype).eps` vicinity of 1 and -1 in the gradient
+    implementation.
 
     Parameters
     ----------
     x : array, any shape
         Array of which we want to compute arccos.
+
+    Returns
+    -------
+    y : array, same shape as x
+        Result of arccos(x).
     """
-    x = jnp.clip(x, -1.0 + jnp.finfo(x.dtype).eps, 1.0 - jnp.finfo(x.dtype).eps)
     return jnp.arccos(x)
+
+
+@differentiable_arccos.defjvp
+def differentiable_arccos_jvp(primal, tangent):
+    x, = primal
+    x_dot, = tangent
+    primal_out = differentiable_arccos(x)
+    x_clipped = jnp.clip(x, -1.0 + jnp.finfo(x.dtype).eps, 1.0 - jnp.finfo(x.dtype).eps)
+    tangent_out = -x_dot / jnp.sqrt(1.0 - x_clipped**2.0)
+    return primal_out, tangent_out
 
 
 def norm_angle(a: ArrayLike) -> jax.Array:

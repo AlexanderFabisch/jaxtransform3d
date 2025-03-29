@@ -10,6 +10,20 @@ norm_vector = jax.jit(ju.norm_vector)
 cross_product_matrix = jax.jit(ju.cross_product_matrix)
 
 
+def test_differentiable_arccos():
+    x = jnp.logspace(-20, -2, 100)
+    x = jnp.hstack((-1.0 + x, 1.0 - x[::-1]))
+    y = ju.differentiable_arccos(x)
+    assert_array_almost_equal(jnp.arccos(x), y)
+    x = jnp.array([-1.0, 1.0])
+    jac_fwd = jax.jacfwd(ju.differentiable_arccos)(x)
+    assert jnp.isfinite(jac_fwd).all()
+    jax_rev = jax.jacrev(ju.differentiable_arccos)(x)
+    assert jnp.isfinite(jax_rev).all()
+    grad = jax.grad(lambda x: ju.differentiable_arccos(x).sum())(x)
+    assert jnp.isfinite(grad).all()
+
+
 def test_norm_vectors_0dim():
     rng = np.random.default_rng(0)
     for n in range(1, 6):
