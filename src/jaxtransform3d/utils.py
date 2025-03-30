@@ -7,11 +7,6 @@ from jax.typing import ArrayLike
 two_pi = 2.0 * jnp.pi
 
 
-def min_diff_norm(x):
-    """Minimum differentiable norm."""
-    return jnp.sqrt(jnp.finfo(x.dtype).smallest_subnormal)
-
-
 def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
     """Differentiable Euclidean norm.
 
@@ -23,7 +18,7 @@ def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
 
     Parameters
     ----------
-    x : array, any shape
+    x : array, shape (..., n)
         Array of which we want to compute the norm.
 
     axis : int or None
@@ -31,11 +26,15 @@ def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
 
     Returns
     -------
-    x_norm : jnp.ndarray
+    x_norm : array, shape (...,)
         Norm of x along given axis.
     """
     squared_norm = (x * x).sum(axis=axis)
-    return jnp.sqrt(jnp.maximum(squared_norm, jnp.finfo(x.dtype).smallest_subnormal))
+    is_zero = jnp.isclose(
+        squared_norm, 0.0, rtol=0.0, atol=jnp.finfo(x.dtype).smallest_subnormal
+    )
+    norm = jnp.sqrt(jnp.maximum(squared_norm, jnp.finfo(x.dtype).smallest_subnormal))
+    return jnp.where(is_zero, 0.0, norm)
 
 
 @jax.custom_jvp
@@ -62,8 +61,8 @@ def differentiable_arccos(x: jnp.ndarray) -> jnp.ndarray:
 
 @differentiable_arccos.defjvp
 def differentiable_arccos_jvp(primal, tangent):
-    x, = primal
-    x_dot, = tangent
+    (x,) = primal
+    (x_dot,) = tangent
     primal_out = differentiable_arccos(x)
     x_clipped = jnp.clip(x, -1.0 + jnp.finfo(x.dtype).eps, 1.0 - jnp.finfo(x.dtype).eps)
     tangent_out = -x_dot / jnp.sqrt(1.0 - x_clipped**2.0)

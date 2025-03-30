@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import cross_product_matrix, differentiable_norm, min_diff_norm
+from ..utils import cross_product_matrix, differentiable_norm
 
 
 def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.Array:
@@ -86,7 +86,7 @@ def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.A
     chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
     chex.assert_equal_shape_prefix((axis_angle, angle), prefix_len=axis_angle.ndim - 1)
 
-    valid_angle = angle > min_diff_norm(angle)
+    valid_angle = angle > 0.0
     angle_safe = jnp.where(valid_angle, angle, 1.0)
     factor1 = jnp.sin(angle) / angle_safe
     angle_p2 = angle * angle
