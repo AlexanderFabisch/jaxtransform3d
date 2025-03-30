@@ -15,13 +15,30 @@ def test_differentiable_arccos():
     x = jnp.hstack((-1.0 + x, 1.0 - x[::-1]))
     y = ju.differentiable_arccos(x)
     assert_array_almost_equal(jnp.arccos(x), y)
+
     x = jnp.array([-1.0, 1.0])
     jac_fwd = jax.jacfwd(ju.differentiable_arccos)(x)
     assert jnp.isfinite(jac_fwd).all()
+
     jax_rev = jax.jacrev(ju.differentiable_arccos)(x)
     assert jnp.isfinite(jax_rev).all()
+
     grad = jax.grad(lambda x: ju.differentiable_arccos(x).sum())(x)
     assert jnp.isfinite(grad).all()
+
+
+def test_differentiable_norm():
+    rng = np.random.default_rng(2323)
+    vec = jnp.asarray(rng.standard_normal(size=(100, 3)))
+    norm = ju.differentiable_norm(vec, axis=-1)
+    assert_array_almost_equal(norm, jnp.linalg.norm(vec, axis=-1))
+
+    norm_0 = ju.differentiable_norm(jnp.zeros(3), axis=0)
+    assert norm_0 == 0.0
+
+    norm_grad = jax.grad(ju.differentiable_norm, argnums=0)
+    assert jnp.isfinite(norm_grad(jnp.zeros(3), axis=0)).all()
+    assert jnp.isfinite(norm_grad(1e-25 * jnp.ones(3), axis=0)).all()
 
 
 def test_norm_vectors_0dim():

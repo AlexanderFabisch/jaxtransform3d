@@ -170,7 +170,7 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
 
     chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
 
-    angle = jnp.linalg.norm(axis_angle, axis=-1)
+    angle = differentiable_norm(axis_angle, axis=-1)
     angle_safe = jnp.where(angle == 0, 1.0, angle)
     half_angle = 0.5 * angle
 

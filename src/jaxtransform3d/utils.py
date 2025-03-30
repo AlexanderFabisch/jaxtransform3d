@@ -112,7 +112,7 @@ def norm_vector(vec: ArrayLike, norm: ArrayLike | None = None) -> jax.Array:
     """
     vec = jnp.asarray(vec)
     if norm is None:
-        norm = jnp.linalg.norm(vec, axis=-1)
+        norm = differentiable_norm(vec, axis=-1)
     norm = jnp.where(norm != 0.0, norm, 1.0)
     return vec / norm[..., jnp.newaxis]
 
