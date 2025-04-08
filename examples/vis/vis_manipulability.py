@@ -202,12 +202,12 @@ def jacobian_space(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
     """
     # https://github.com/NxRLab/ModernRobotics/blob/36f0f1b47118f026ac76f406e1881edaba9389f2/packages/Python/modern_robotics/core.py#L663
     exp_coords = screw_axes * thetas[:, jnp.newaxis]
-    Js = jnp.copy(screw_axes)
+    JsT = jnp.copy(screw_axes)
     T = jnp.eye(4)
     for i in range(1, len(thetas)):
         T = T @ jt.transform_from_exponential_coordinates(exp_coords[i - 1])
-        Js = Js.at[:, i].set(adjoint_from_transform(T) @ screw_axes[i])
-    return Js
+        JsT = JsT.at[i].set(adjoint_from_transform(T) @ screw_axes[i])
+    return JsT.T
 
 
 # %%
