@@ -183,7 +183,7 @@ def adjoint_from_transform(A2B: jnp.ndarray) -> jnp.ndarray:
     return adj_A2B
 
 
-def jacobian_analytical(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
+def jacobian_space(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
     """Computes the space Jacobian.
 
     Parameters
@@ -200,13 +200,13 @@ def jacobian_analytical(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.nda
     J : array, shape (6, n_joints)
         The space Jacobian corresponding to the inputs.
     """
-    # https://github.com/NxRLab/ModernRobotics/blob/36f0f1b47118f026ac76f406e1881edaba9389f2/packages/Python/modern_robotics/core.py#L631
+    # https://github.com/NxRLab/ModernRobotics/blob/36f0f1b47118f026ac76f406e1881edaba9389f2/packages/Python/modern_robotics/core.py#L663
+    exp_coords = screw_axes * thetas[:, jnp.newaxis]
     Js = jnp.copy(screw_axes)
-    exp_coords = screw_axes * -thetas[:, jnp.newaxis]
     T = jnp.eye(4)
-    for i in range(len(thetas) - 2, -1, -1):
-        T = T @ jt.transform_from_exponential_coordinates(exp_coords[i + 1])
-        Js = Js.at[:, i].set(adjoint_from_transform(T) @ screw_axes[:, i])
+    for i in range(1, len(thetas)):
+        T = T @ jt.transform_from_exponential_coordinates(exp_coords[i - 1])
+        Js = Js.at[:, i].set(adjoint_from_transform(T) @ screw_axes[i])
     return Js
 
 
@@ -242,11 +242,11 @@ forward = jax.jit(
     )
 )
 jacobian = jax.jit(jax.jacfwd(forward))
-jacobian_ana = jax.jit(partial(jacobian_analytical, screw_axes_home))
+jacobian_ana = jax.jit(partial(jacobian_space, screw_axes_home))
 
 # %%
 # and define the joint angles.
-thetas = jnp.array([0, 0, 0, 0, 1, 0], dtype=np.float32)
+thetas = jnp.array([0, 0, 0.5, 0.1, 0.5, 0], dtype=np.float32)
 for joint_name, theta in zip(joint_names, thetas, strict=True):
     tm.set_joint(joint_name, theta)
 
@@ -278,7 +278,7 @@ def jacobian_ellipsoids(
     force_radii : array, shape (6,)
         Radii of force ellipsoid.
     """
-    J = jacobian(thetas)
+    J = jacobian_ana(thetas)
     A = J @ J.T
     try:
         A_eigenvalues = jnp.linalg.eigvals(A)
