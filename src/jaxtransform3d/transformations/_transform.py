@@ -9,6 +9,7 @@ from ..rotations import (
     left_jacobian_SO3_inv,
     matrix_inverse,
 )
+from ..utils import cross_product_matrix
 
 
 def transform_inverse(T: ArrayLike) -> jax.Array:
@@ -144,6 +145,118 @@ def create_transform(R: ArrayLike, t: ArrayLike) -> jax.Array:
     T = T.at[..., :3, 3].set(t)
     T = T.at[..., 3, 3].set(1)
     return T
+
+
+def adjoint_from_transform(T: ArrayLike) -> jnp.ndarray:
+    r"""Compute adjoint representation of a transformation matrix.
+
+
+    The adjoint representation of a transformation
+    :math:`\left[Ad_{\boldsymbol{T}_{BA}}\right] \in \mathbb{R}^{6 \times 6}`
+    from frame A to frame B translates a twist from frame A to frame B
+    through the adjoint map
+
+    .. math::
+
+        \mathcal{V}_{B}
+        = \left[Ad_{\boldsymbol{T}_{BA}}\right] \mathcal{V}_A
+
+    The corresponding transformation matrix operation is
+
+    .. math::
+
+        \left[\mathcal{V}_{B}\right]
+        = \boldsymbol{T}_{BA} \left[\mathcal{V}_A\right]
+        \boldsymbol{T}_{BA}^{-1}
+
+    We can also use the adjoint representation to transform a wrench from frame
+    A to frame B:
+
+    .. math::
+
+        \mathcal{F}_B
+        = \left[ Ad_{\boldsymbol{T}_{AB}} \right]^T \mathcal{F}_A
+
+    Note that not only the adjoint is transposed but also the transformation is
+    inverted.
+
+    Adjoint representations have the following properties:
+
+    .. math::
+
+        \left[Ad_{\boldsymbol{T}_1 \boldsymbol{T}_2}\right]
+        = \left[Ad_{\boldsymbol{T}_1}\right]
+        \left[Ad_{\boldsymbol{T}_2}\right]
+
+    .. math::
+
+        \left[Ad_{\boldsymbol{T}}\right]^{-1} =
+        \left[Ad_{\boldsymbol{T}^{-1}}\right]
+
+    For a transformation matrix
+
+    .. math::
+
+        \boldsymbol T =
+        \left( \begin{array}{cc}
+            \boldsymbol R & \boldsymbol t\\
+            \boldsymbol 0 & 1\\
+        \end{array} \right)
+
+    the adjoint is defined as
+
+    .. math::
+
+        \left[Ad_{\boldsymbol{T}}\right]
+        =
+        \left( \begin{array}{cc}
+            \boldsymbol R & \boldsymbol 0\\
+            \left[\boldsymbol{t}\right]_{\times}\boldsymbol R & \boldsymbol R\\
+        \end{array} \right),
+
+    where :math:`\left[\boldsymbol{t}\right]_{\times}` is the cross-product
+    matrix of the translation component.
+
+    Parameters
+    ----------
+    T : array-like, shape (4, 4)
+        Transform from frame A to frame B
+
+    Returns
+    -------
+    adj_A2B : array, shape (6, 6)
+        Adjoint representation of transformation matrix
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> import jaxtransform3d.transformations as jt
+    >>> jt.adjoint_from_transform(jnp.eye(4))
+    Array([[1., 0., 0., 0., 0., 0.],
+           [0., 1., 0., 0., 0., 0.],
+           [0., 0., 1., 0., 0., 0.],
+           [0., 0., 0., 1., 0., 0.],
+           [0., 0., 0., 0., 1., 0.],
+           [0., 0., 0., 0., 0., 1.]], dtype=float32)
+    >>> jt.adjoint_from_transform(
+    ...     jt.create_transform(jnp.eye(3), jnp.array([1.0, 2.0, 3.0])))
+    Array([[ 1.,  0.,  0., 0., 0., 0.],
+           [ 0.,  1.,  0., 0., 0., 0.],
+           [ 0.,  0.,  1., 0., 0., 0.],
+           [ 0., -3.,  2., 1., 0., 0.],
+           [ 3.,  0., -1., 0., 1., 0.],
+           [-2.,  1.,  0., 0., 0., 1.]], dtype=float32)
+    """
+    T = jnp.asarray(T)
+
+    R = T[..., :3, :3]
+    t = T[..., :3, 3]
+
+    adj_A2B = jnp.zeros(T.shape[:-2] + (6, 6))
+    adj_A2B = adj_A2B.at[..., :3, :3].set(R)
+    adj_A2B = adj_A2B.at[..., 3:, :3].set(cross_product_matrix(t) @ R)
+    adj_A2B = adj_A2B.at[..., 3:, 3:].set(R)
+    return adj_A2B
 
 
 def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
