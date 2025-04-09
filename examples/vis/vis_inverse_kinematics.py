@@ -20,6 +20,7 @@ import pytransform3d.transformations as pt
 import pytransform3d.visualizer as pv
 from pytransform3d.urdf import UrdfTransformManager
 
+import jaxtransform3d.experimental.robotics as jrob
 import jaxtransform3d.transformations as jt
 
 
@@ -119,9 +120,7 @@ def get_screw_axes(
 # 2. We concatenate the relative joint displacements and the base pose to
 #    obtain the end-effector's pose.
 def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas):
-    """Compute probabilistic forward kinematics.
-
-    This is based on the probabilistic product of exponentials.
+    """Compute forward kinematics based on the product of exponentials.
 
     Parameters
     ----------
@@ -145,18 +144,11 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
     ee2base : array, shape (6,)
         Exponential coordinates of transformation from end-effector to base.
     """
-    chex.assert_equal_shape_prefix((screw_axes_home, thetas), prefix_len=1)
-
-    thetas = jnp.clip(thetas, joint_limits[:, 0], joint_limits[:, 1])
-    exp_coords = screw_axes_home * thetas[:, jnp.newaxis]
-    joint_displacements = jt.transform_from_exponential_coordinates(exp_coords)
-
-    T = jnp.eye(4)
-    for joint_displacement in joint_displacements:
-        T = T @ joint_displacement
-    T = T @ ee2base_home
-
-    return jt.exponential_coordinates_from_transform(T)
+    return jt.exponential_coordinates_from_transform(
+        jrob.product_of_exponentials(
+            ee2base_home, screw_axes_home, joint_limits, thetas
+        )
+    )
 
 
 # %%
