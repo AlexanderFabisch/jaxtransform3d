@@ -7,7 +7,12 @@ from ..transformations import (
 )
 
 
-def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas):
+def product_of_exponentials(
+    ee2base_home: jnp.ndarray,
+    screw_axes_home: jnp.ndarray,
+    joint_limits: jnp.ndarray,
+    thetas: jnp.ndarray,
+) -> jnp.ndarray:
     """Compute forward kinematics based on the product of exponentials.
 
     Parameters
@@ -31,7 +36,28 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
     -------
     ee2base : array, shape (4, 4)
         Transformation from end-effector to base.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.experimental.robotics import product_of_exponentials
+    >>> ee2base_home = jnp.array([[-1, 0,  0, 0],
+    ...                           [ 0, 1,  0, 6],
+    ...                           [ 0, 0, -1, 2],
+    ...                           [ 0, 0,  0, 1]], dtype=jnp.float32)
+    >>> screw_axes_home = jnp.array([[0, 0,  1,  4, 0,    0],
+    ...                              [0, 0,  0,  0, 1,    0],
+    ...                              [0, 0, -1, -6, 0, -0.1]])
+    >>> thetas = jnp.array([jnp.pi / 2.0, 3, jnp.pi])
+    >>> joint_limits = jnp.vstack(([-jnp.inf] * 3, [jnp.inf] * 3)).T
+    >>> product_of_exponentials(
+    ...     ee2base_home, screw_axes_home, joint_limits, thetas).round(6)
+    Array([[ 0...,  1...,  0..., -5...],
+           [ 1..., ...0...,  0...,  4...],
+           [ 0...,  0..., -1...,  1.685841],
+           [ 0...,  0...,  0...,  1...]]...)
     """
+    # https://github.com/NxRLab/ModernRobotics/blob/36f0f1b47118f026ac76f406e1881edaba9389f2/packages/Python/modern_robotics/core.py#L593
     chex.assert_equal_shape_prefix((screw_axes_home, thetas), prefix_len=1)
 
     thetas = jnp.clip(thetas, joint_limits[:, 0], joint_limits[:, 1])
