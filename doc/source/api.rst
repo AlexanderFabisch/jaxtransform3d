@@ -67,6 +67,7 @@ Transformation Matrices
    ~apply_transform
    ~compose_transforms
    ~create_transform
+   ~adjoint_from_transform
    ~transform_from_exponential_coordinates
    ~exponential_coordinates_from_transform
 
