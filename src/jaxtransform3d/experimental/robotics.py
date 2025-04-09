@@ -44,14 +44,14 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
     return T @ ee2base_home
 
 
-def jacobian_space(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
+def jacobian_space(screw_axes_home: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
     """Computes the space Jacobian.
 
     Parameters
     ----------
-    screw_axes : array, shape (6, n_joints)
-        The joint screw axes in the space frame when the manipulator is at the
-        home position, in the format of a matrix with axes as the columns.
+    screw_axes_home : array, shape (n_joints, 6)
+        The joint screw axes in the space frame when the manipulator is at
+        the home position.
 
     thetas : array, shape (n_joints,)
         A list of joint coordinates.
@@ -60,12 +60,32 @@ def jacobian_space(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
     -------
     Js : array, shape (6, n_joints)
         The space Jacobian corresponding to the inputs.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.experimental.robotics import jacobian_space
+    >>> screw_axes = jnp.array([[0, 0, 1,   0, 0.2, 0.2],
+    ...                         [1, 0, 0,   2,   0,   3],
+    ...                         [0, 1, 0,   0,   2,   1],
+    ...                         [1, 0, 0, 0.2, 0.3, 0.4]])
+    >>> thetas = jnp.array([0.2, 1.1, 0.1, 1.2])
+    >>> jacobian_space(screw_axes, thetas)
+    Array([[ 0.        ,  0.980..., -0.090...,  0.957...],
+           [ 0.        ,  0.198...,  0.444...,  0.284...],
+           [ 1.        ,  0.   ...,  0.891..., -0.045...],
+           [ 0.        ,  1.952..., -2.216..., -0.511...],
+           [ 0.2       ,  0.436..., -2.437...,  2.775...],
+           [ 0.2       ,  2.960...,  3.235...,  2.225...]], ...)
     """
     # https://github.com/NxRLab/ModernRobotics/blob/36f0f1b47118f026ac76f406e1881edaba9389f2/packages/Python/modern_robotics/core.py#L663
-    exp_coords = screw_axes * thetas[:, jnp.newaxis]
-    Js = jnp.copy(screw_axes)
+    chex.assert_shape(screw_axes_home, (len(thetas), 6))
+    chex.assert_shape(thetas, (len(thetas),))
+
+    exp_coords = screw_axes_home * thetas[:, jnp.newaxis]
+    Js = jnp.copy(screw_axes_home.T)
     T = jnp.eye(4)
     for i in range(1, len(thetas)):
         T = T @ transform_from_exponential_coordinates(exp_coords[i - 1])
-        Js = Js.at[:, i].set(adjoint_from_transform(T) @ screw_axes[i])
+        Js = Js.at[:, i].set(adjoint_from_transform(T) @ screw_axes_home[i])
     return Js
