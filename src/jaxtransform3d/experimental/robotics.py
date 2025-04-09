@@ -13,7 +13,14 @@ def product_of_exponentials(
     joint_limits: jnp.ndarray,
     thetas: jnp.ndarray,
 ) -> jnp.ndarray:
-    """Compute forward kinematics based on the product of exponentials.
+    r"""Compute forward kinematics based on the product of exponentials.
+
+    .. math::
+
+        f: \mathbb{R}^n \rightarrow SE(3),\quad
+        f(\boldsymbol{\theta}) = \boldsymbol{T},
+
+    with the joint angle vector :math:`\boldsymbol{\theta} \in \mathbb{R}^n`.
 
     Parameters
     ----------
@@ -36,6 +43,11 @@ def product_of_exponentials(
     -------
     ee2base : array, shape (4, 4)
         Transformation from end-effector to base.
+
+    See also
+    --------
+    jacobian_space
+        Derivative of forward kinematics.
 
     Examples
     --------
@@ -71,7 +83,33 @@ def product_of_exponentials(
 
 
 def jacobian_space(screw_axes_home: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
-    """Computes the space Jacobian.
+    r"""Computes the space Jacobian.
+
+    .. math::
+
+        \boldsymbol{J}(\boldsymbol{\theta})
+        = \frac{\partial f(\boldsymbol{\theta})}{\partial \boldsymbol{\theta}},
+
+    with the joint angle vector :math:`\boldsymbol{\theta} \in \mathbb{R}^n`
+    and the forward kinematics function
+
+    .. math::
+
+        f: \mathbb{R}^n \rightarrow \mathbb{R}^6,\quad
+        f(\boldsymbol{\theta}) = \boldsymbol{\xi}
+
+    that maps the joint angle vector :math:`\boldsymbol{\theta} \in \mathbb{R}^n`
+    to the exponential coordinates :math:`\boldsymbol{\xi}` of the end-effector
+    pose with respect to the base frame.
+
+    The Jacobian can be used to map instantaneous velocities in joint space
+    to instantaneous spatial velocities in Cartesian space with
+
+    .. math::
+
+        \dot{\boldsymbol{\xi}}
+        =
+        \boldsymbol{J}(\boldsymbol{\theta}) \dot{\boldsymbol{\theta}}.
 
     Parameters
     ----------
@@ -86,6 +124,11 @@ def jacobian_space(screw_axes_home: jnp.ndarray, thetas: jnp.ndarray) -> jnp.nda
     -------
     Js : array, shape (6, n_joints)
         The space Jacobian corresponding to the inputs.
+
+    See also
+    --------
+    product_of_exponentials
+        Forward kinematics.
 
     Examples
     --------
