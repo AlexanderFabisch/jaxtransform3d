@@ -12,7 +12,6 @@ kinematics solver uses the Jacobian's pseudo-inverse.
 import os
 from functools import partial
 
-import chex
 import jax.numpy as jnp
 import jax.random
 import numpy as np
