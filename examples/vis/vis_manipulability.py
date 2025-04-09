@@ -21,7 +21,6 @@ from matplotlib import cbook
 from pytransform3d.urdf import UrdfTransformManager
 
 import jaxtransform3d.transformations as jt
-import jaxtransform3d.utils as ju
 
 
 # %%
@@ -160,29 +159,6 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
     return jt.exponential_coordinates_from_transform(T)
 
 
-def adjoint_from_transform(A2B: jnp.ndarray) -> jnp.ndarray:
-    r"""Compute adjoint representation of a transformation matrix.
-
-    Parameters
-    ----------
-    A2B : array, shape (4, 4)
-        Transform from frame A to frame B
-
-    Returns
-    -------
-    adj_A2B : array, shape (6, 6)
-        Adjoint representation of transformation matrix
-    """
-    R = A2B[:3, :3]
-    t = A2B[:3, 3]
-
-    adj_A2B = jnp.zeros((6, 6))
-    adj_A2B = adj_A2B.at[:3, :3].set(R)
-    adj_A2B = adj_A2B.at[3:, :3].set(ju.cross_product_matrix(t) @ R)
-    adj_A2B = adj_A2B.at[3:, 3:].set(R)
-    return adj_A2B
-
-
 def jacobian_space(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
     """Computes the space Jacobian.
 
@@ -206,7 +182,7 @@ def jacobian_space(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
     T = jnp.eye(4)
     for i in range(1, len(thetas)):
         T = T @ jt.transform_from_exponential_coordinates(exp_coords[i - 1])
-        JsT = JsT.at[i].set(adjoint_from_transform(T) @ screw_axes[i])
+        JsT = JsT.at[i].set(jt.adjoint_from_transform(T) @ screw_axes[i])
     return JsT.T
 
 
