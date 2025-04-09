@@ -20,6 +20,7 @@ import pytransform3d.visualizer as pv
 from matplotlib import cbook
 from pytransform3d.urdf import UrdfTransformManager
 
+import jaxtransform3d.experimental.robotics as jrob
 import jaxtransform3d.transformations as jt
 
 
@@ -159,33 +160,6 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
     return jt.exponential_coordinates_from_transform(T)
 
 
-def jacobian_space(screw_axes: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
-    """Computes the space Jacobian.
-
-    Parameters
-    ----------
-    screw_axes : array, shape (6, n_joints)
-        The joint screw axes in the space frame when the manipulator is at the
-        home position, in the format of a matrix with axes as the columns.
-
-    thetas : array, shape (n_joints,)
-        A list of joint coordinates.
-
-    Returns
-    -------
-    J : array, shape (6, n_joints)
-        The space Jacobian corresponding to the inputs.
-    """
-    # https://github.com/NxRLab/ModernRobotics/blob/36f0f1b47118f026ac76f406e1881edaba9389f2/packages/Python/modern_robotics/core.py#L663
-    exp_coords = screw_axes * thetas[:, jnp.newaxis]
-    JsT = jnp.copy(screw_axes)
-    T = jnp.eye(4)
-    for i in range(1, len(thetas)):
-        T = T @ jt.transform_from_exponential_coordinates(exp_coords[i - 1])
-        JsT = JsT.at[i].set(jt.adjoint_from_transform(T) @ screw_axes[i])
-    return JsT.T
-
-
 # %%
 # Setup
 # -----
@@ -218,7 +192,7 @@ forward = jax.jit(
     )
 )
 jacobian = jax.jit(jax.jacfwd(forward))
-jacobian_ana = jax.jit(partial(jacobian_space, screw_axes_home))
+jacobian_ana = jax.jit(partial(jrob.jacobian_space, screw_axes_home))
 
 # %%
 # and define the joint angles.
