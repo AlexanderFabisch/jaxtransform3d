@@ -1,12 +1,9 @@
 """
-==============================================
-Inverse Kinematics and Product of Exponentials
-==============================================
+=========================
+Manipulability of a Robot
+=========================
 
-We compute the inverse kinematics of a robot and visualize it. We use JAX'
-automatic differentiation to compute the Jacobian of a robot based on the
-Product of Exponentials formulation of forward kinematics. The inverse
-kinematics solver uses the Jacobian's pseudo-inverse.
+
 """
 
 import os
@@ -15,8 +12,11 @@ from functools import partial
 import jax.numpy as jnp
 import jax.random
 import numpy as np
+import open3d as o3d
 import pytransform3d.transformations as pt
+import pytransform3d.uncertainty as pu
 import pytransform3d.visualizer as pv
+from matplotlib import cbook
 from pytransform3d.urdf import UrdfTransformManager
 
 import jaxtransform3d.experimental.robotics as jrob
@@ -151,47 +151,6 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
 
 
 # %%
-# Inverse Kinematics Solver
-# -------------------------
-# We define a callback to animate the visualization. At the beginning of each
-# animation, we sample a random goal.
-# In each frame, we compute one step of the numerical inverse kinematics
-# solver. We use the Jacobian pseudo-inverse to reduce the pose error. In
-# addition, we perform a null-space projection to avoid getting close to the
-# joint limits.
-def animation_callback(step, tm, graph, target_frame, joint_names):
-    global key, target, thetas
-
-    if step == 0:
-        key, sampling_key = jax.random.split(key, 2)
-        current_exp_coords = forward(thetas)
-        exp_coords = 0.9 * current_exp_coords + jnp.array(
-            [0.5] * 3 + [0.1] * 3
-        ) * jax.random.normal(sampling_key, shape=(6,))
-        target = jt.transform_from_exponential_coordinates(exp_coords)
-        target_frame.set_data(A2B=target)
-
-    # details: https://www.cs.cmu.edu/~15464-s13/lectures/lecture6/iksurvey.pdf
-    J = jac(thetas)
-    J_inv = jnp.linalg.pinv(J)
-    error = jt.exponential_coordinates_from_transform(target) - forward(thetas)
-    new_thetas = (
-        thetas
-        + 0.2 * J_inv @ error
-        + 0.05 * (jnp.eye(len(thetas)) - J_inv @ J) @ -thetas
-    )
-    if not jnp.any(jnp.isnan(new_thetas)):
-        thetas = jnp.clip(new_thetas, joint_limits[:, 0], joint_limits[:, 1])
-    print(thetas)
-
-    for joint_name, value in zip(joint_names, thetas, strict=False):
-        tm.set_joint(joint_name, value)
-    graph.set_data()
-
-    return graph, target_frame
-
-
-# %%
 # Setup
 # -----
 # We load the URDF file,
@@ -222,30 +181,82 @@ forward = jax.jit(
         joint_limits,
     )
 )
-jac = jax.jit(jax.jacfwd(forward))
+jacobian = jax.jit(jax.jacfwd(forward))
+jacobian_ana = jax.jit(partial(jrob.jacobian_space, screw_axes_home))
 
 # %%
 # and define the joint angles.
-thetas = jnp.zeros(6)
+thetas = jnp.array([0, 0, 0.5, 0.1, 0.5, 0], dtype=np.float32)
 for joint_name, theta in zip(joint_names, thetas, strict=True):
     tm.set_joint(joint_name, theta)
-key = jax.random.key(42)
+
+print((jacobian(thetas) - jacobian_ana(thetas)).round(3))
+
+
+def jacobian_ellipsoids(
+    thetas: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """Computes manipulability and force ellipsoid based on Jacobian.
+
+    Parameters
+    ----------
+
+    thetas : array, shape (n_joints,)
+        A list of joint coordinates.
+
+    Returns
+    -------
+    manipulability : array, shape (6, 6)
+        Manipulability matrix.
+
+    force : array, shape (6, 6)
+        Force matrix.
+
+    manipulability_radii : array, shape (6,)
+        Radii of manipulability ellipsoid.
+
+    force_radii : array, shape (6,)
+        Radii of force ellipsoid.
+    """
+    J = jacobian_ana(thetas)
+    A = J @ J.T
+    try:
+        A_eigenvalues = jnp.linalg.eigvals(A)
+        manipulability_radii = jnp.sqrt(jnp.maximum(A_eigenvalues, 0.0))
+    except np.linalg.LinAlgError:
+        manipulability_radii = jnp.linalg.svd(A)[1]
+    Ainv = jnp.linalg.pinv(A)
+    Ainv_eigenvalues = jnp.linalg.eigvals(Ainv)
+    force_radii = jnp.sqrt(Ainv_eigenvalues)
+    return A, Ainv, manipulability_radii, force_radii
+
+
+ee2base = jt.transform_from_exponential_coordinates(forward(thetas))
+manipulability, force, _, _ = jacobian_ellipsoids(thetas)
+
+x, y, z = pu.to_projected_ellipsoid(
+    np.asarray(ee2base), np.asarray(manipulability), factor=1, n_steps=50
+)
+polys = np.stack([cbook._array_patch_perimeters(a, 1, 1) for a in (x, y, z)], axis=-1)
+vertices = polys.reshape(-1, 3)
+triangles = (
+    [[4 * i + 0, 4 * i + 1, 4 * i + 2] for i in range(len(polys))]
+    + [[4 * i + 2, 4 * i + 3, 4 * i + 0] for i in range(len(polys))]
+    + [[4 * i + 0, 4 * i + 3, 4 * i + 2] for i in range(len(polys))]
+    + [[4 * i + 2, 4 * i + 1, 4 * i + 0] for i in range(len(polys))]
+)
+mesh = o3d.geometry.TriangleMesh(
+    o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(triangles)
+)
+mesh.paint_uniform_color((0, 0.7, 0))
 
 # %%
 # The following code visualizes the result.
 fig = pv.figure()
-graph = fig.plot_graph(tm, "robot_arm", show_visuals=True)
-target = jnp.zeros(6)
-target_frame = fig.plot_transform(np.eye(4), s=0.3)
+fig.plot_graph(tm, "robot_arm", show_visuals=True)
+fig.add_geometry(mesh)
 fig.view_init(elev=5, azim=50)
-n_frames = 100
 if "__file__" in globals():
-    fig.animate(
-        animation_callback,
-        n_frames,
-        loop=True,
-        fargs=(tm, graph, target_frame, joint_names),
-    )
     fig.show()
 else:
     fig.save_image("__open3d_rendered_image.jpg")
