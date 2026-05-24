@@ -4,6 +4,7 @@ import jax.numpy as jnp
 from ..transformations import (
     adjoint_from_transform,
     transform_from_exponential_coordinates,
+    transform_inverse,
 )
 
 
@@ -158,3 +159,66 @@ def jacobian_space(screw_axes_home: jnp.ndarray, thetas: jnp.ndarray) -> jnp.nda
         T = T @ transform_from_exponential_coordinates(exp_coords[i - 1])
         Js = Js.at[:, i].set(adjoint_from_transform(T) @ screw_axes_home[i])
     return Js
+
+
+def jacobian_body(
+    ee2base_home: jnp.ndarray,
+    screw_axes_home: jnp.ndarray,
+    joint_limits: jnp.ndarray,
+    thetas: jnp.ndarray,
+) -> jnp.ndarray:
+    r"""Computes the body Jacobian.
+
+    The body Jacobian :math:`\boldsymbol{J}_b` relates joint velocities to the
+    end-effector twist expressed in the body frame:
+
+    .. math::
+
+        \mathcal{V}_b
+        =
+        \boldsymbol{J}_b(\boldsymbol{\theta}) \dot{\boldsymbol{\theta}}.
+
+    It is related to the space Jacobian
+    :math:`\boldsymbol{J}_s` through the adjoint of
+    :math:`\boldsymbol{T}_{bs} = \boldsymbol{T}_{sb}^{-1}`:
+
+    .. math::
+
+        \boldsymbol{J}_b
+        =
+        \left[Ad_{\boldsymbol{T}_{bs}}\right] \boldsymbol{J}_s.
+
+    Unlike :func:`jacobian_space`, the body Jacobian is the right choice when
+    the corresponding quantity (e.g., a manipulability ellipsoid) should be
+    interpreted at the end-effector.
+
+    Parameters
+    ----------
+    ee2base_home : array, shape (4, 4)
+        The home configuration of the end-effector.
+
+    screw_axes_home : array, shape (n_joints, 6)
+        The joint screw axes in the space frame at the home position.
+
+    joint_limits : array, shape (n_joints, 2)
+        Joint limits: minimum in column 0, maximum in column 1.
+
+    thetas : array, shape (n_joints,)
+        A list of joint coordinates.
+
+    Returns
+    -------
+    Jb : array, shape (6, n_joints)
+        The body Jacobian corresponding to the inputs.
+
+    See also
+    --------
+    jacobian_space
+        The space Jacobian.
+
+    product_of_exponentials
+        Forward kinematics.
+    """
+    Js = jacobian_space(screw_axes_home, thetas)
+    T_sb = product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
+    return adjoint_from_transform(transform_inverse(T_sb)) @ Js
