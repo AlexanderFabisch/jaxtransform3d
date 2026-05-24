@@ -14,9 +14,7 @@ import jax.random
 import numpy as np
 import open3d as o3d
 import pytransform3d.transformations as pt
-import pytransform3d.uncertainty as pu
 import pytransform3d.visualizer as pv
-from matplotlib import cbook
 from pytransform3d.urdf import UrdfTransformManager
 
 import jaxtransform3d.experimental.robotics as jrob
@@ -181,8 +179,10 @@ forward = jax.jit(
         joint_limits,
     )
 )
-jacobian = jax.jit(jax.jacfwd(forward))
-jacobian_ana = jax.jit(partial(jrob.jacobian_space, screw_axes_home))
+jacobian_space = jax.jit(partial(jrob.jacobian_space, screw_axes_home))
+jacobian_body = jax.jit(
+    partial(jrob.jacobian_body, ee2base_home, screw_axes_home, joint_limits)
+)
 
 # %%
 # and define the joint angles.
@@ -190,71 +190,142 @@ thetas = jnp.array([0, 0, 0.5, 0.1, 0.5, 0], dtype=np.float32)
 for joint_name, theta in zip(joint_names, thetas, strict=True):
     tm.set_joint(joint_name, theta)
 
-print((jacobian(thetas) - jacobian_ana(thetas)).round(3))
+# %%
+# Sanity check: the body and space Jacobians are related by the adjoint of
+# the inverse end-effector pose (Lynch & Park, *Modern Robotics*, eq. 5.22):
+#
+# .. math::
+#
+#     \boldsymbol{J}_b(\boldsymbol{\theta})
+#     = \left[Ad_{\boldsymbol{T}_{sb}^{-1}}\right]
+#       \boldsymbol{J}_s(\boldsymbol{\theta}).
+#
+# This is an exact algebraic identity and should hold to machine precision.
+T_sb = jrob.product_of_exponentials(
+    ee2base_home, screw_axes_home, joint_limits, thetas
+)
+Jb_via_adjoint = jt.adjoint_from_transform(jt.transform_inverse(T_sb)) @ jacobian_space(
+    thetas
+)
+print(
+    "|J_body - Ad(T_sb^-1) J_space|_max =",
+    float(jnp.max(jnp.abs(jacobian_body(thetas) - Jb_via_adjoint))),
+)
 
 
-def jacobian_ellipsoids(
-    thetas: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    """Computes manipulability and force ellipsoid based on Jacobian.
+# %%
+# Manipulability ellipsoid
+# ------------------------
+# Following Yoshikawa (1985) and Lynch & Park's *Modern Robotics* (§5.4), the
+# translational manipulability ellipsoid at the end-effector is the image of
+# the unit ball in joint-velocity space under the linear part of the
+# **body** Jacobian:
+#
+# .. math::
+#
+#     \mathcal{E}_v = \{\boldsymbol{J}_v \dot{\boldsymbol{\theta}} \;:\;
+#     \|\dot{\boldsymbol{\theta}}\| \le 1\},
+#
+# whose principal axes are the eigenvectors of
+# :math:`\boldsymbol{A}_v = \boldsymbol{J}_v \boldsymbol{J}_v^T` and whose
+# semi-axis lengths are :math:`\sqrt{\lambda_i}`. We use the *body* Jacobian
+# (rather than the space Jacobian) so the ellipsoid is naturally anchored at
+# the end-effector. We treat the angular and translational parts separately
+# because mixing units in a single 6D ellipsoid is not meaningful.
+#
+# The dual **force ellipsoid** shares the same principal axes but with
+# inverse semi-axis lengths :math:`1/\sqrt{\lambda_i}` -- directions in which
+# the manipulator moves easily are precisely those in which it can resist
+# external forces least.
+def manipulability_ellipsoid(thetas: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+    r"""Compute the translational manipulability ellipsoid at the end-effector.
 
     Parameters
     ----------
-
     thetas : array, shape (n_joints,)
-        A list of joint coordinates.
+        Joint coordinates.
 
     Returns
     -------
-    manipulability : array, shape (6, 6)
-        Manipulability matrix.
+    eigvals : array, shape (3,)
+        Eigenvalues of :math:`\boldsymbol{A}_v = \boldsymbol{J}_v \boldsymbol{J}_v^T`
+        in ascending order. Semi-axis lengths are :math:`\sqrt{\lambda_i}`.
 
-    force : array, shape (6, 6)
-        Force matrix.
-
-    manipulability_radii : array, shape (6,)
-        Radii of manipulability ellipsoid.
-
-    force_radii : array, shape (6,)
-        Radii of force ellipsoid.
+    eigvecs : array, shape (3, 3)
+        Eigenvectors as columns, expressed in the end-effector (body) frame.
     """
-    J = jacobian_ana(thetas)
-    A = J @ J.T
-    try:
-        A_eigenvalues = jnp.linalg.eigvals(A)
-        manipulability_radii = jnp.sqrt(jnp.maximum(A_eigenvalues, 0.0))
-    except np.linalg.LinAlgError:
-        manipulability_radii = jnp.linalg.svd(A)[1]
-    Ainv = jnp.linalg.pinv(A)
-    Ainv_eigenvalues = jnp.linalg.eigvals(Ainv)
-    force_radii = jnp.sqrt(Ainv_eigenvalues)
-    return A, Ainv, manipulability_radii, force_radii
+    # Body Jacobian: (omega; v) convention, so rows 3:6 are the linear part.
+    Jb = jacobian_body(thetas)
+    Jv = Jb[3:, :]
+    A_v = Jv @ Jv.T
+    eigvals, eigvecs = jnp.linalg.eigh(A_v)
+    return jnp.maximum(eigvals, 0.0), eigvecs
+
+
+def ellipsoid_mesh(
+    center: np.ndarray,
+    rotation: np.ndarray,
+    radii: np.ndarray,
+    color: tuple,
+    n_steps: int = 30,
+) -> o3d.geometry.TriangleMesh:
+    """Build a closed o3d triangle mesh for an ellipsoid."""
+    u = np.linspace(0.0, 2.0 * np.pi, n_steps)
+    v = np.linspace(0.0, np.pi, n_steps)
+    uu, vv = np.meshgrid(u, v, indexing="ij")
+    sphere = np.stack(
+        [np.cos(uu) * np.sin(vv), np.sin(uu) * np.sin(vv), np.cos(vv)], axis=-1
+    ).reshape(-1, 3)
+    points = sphere * radii  # scale to ellipsoid in the eigenframe
+    points = points @ rotation.T + center  # rotate to world frame, translate
+
+    triangles = []
+    for i in range(n_steps - 1):
+        for j in range(n_steps - 1):
+            a = i * n_steps + j
+            b = a + n_steps
+            triangles.append([a, b, a + 1])
+            triangles.append([a + 1, b, b + 1])
+
+    mesh = o3d.geometry.TriangleMesh(
+        o3d.utility.Vector3dVector(points),
+        o3d.utility.Vector3iVector(triangles),
+    )
+    mesh.paint_uniform_color(color)
+    mesh.compute_vertex_normals()
+    return mesh
 
 
 ee2base = jt.transform_from_exponential_coordinates(forward(thetas))
-manipulability, force, _, _ = jacobian_ellipsoids(thetas)
+eigvals, eigvecs_body = manipulability_ellipsoid(thetas)
 
-x, y, z = pu.to_projected_ellipsoid(
-    np.asarray(ee2base), np.asarray(manipulability), factor=1, n_steps=50
+# Express eigenvectors in the base frame (the body Jacobian is in body coords).
+R_sb = np.asarray(ee2base[:3, :3])
+eigvecs_base = R_sb @ np.asarray(eigvecs_body)
+center = np.asarray(ee2base[:3, 3])
+
+manip_radii = np.sqrt(np.asarray(eigvals))
+print("Translational manipulability semi-axes:", manip_radii)
+print("Yoshikawa manipulability index sqrt(det(A_v)):", float(np.prod(manip_radii)))
+
+# Manipulability ellipsoid (green): velocity ellipsoid at the end-effector.
+manip_mesh = ellipsoid_mesh(center, eigvecs_base, manip_radii, (0.0, 0.7, 0.0))
+
+# Force ellipsoid (red): dual ellipsoid with inverse radii. Skip directions
+# where the manipulator is singular (eigvals == 0).
+force_radii = np.where(manip_radii > 1e-6, 1.0 / np.maximum(manip_radii, 1e-6), 0.0)
+# Normalize so the two ellipsoids are visually comparable.
+scale = manip_radii.max() / max(force_radii.max(), 1e-6) * 0.5
+force_mesh = ellipsoid_mesh(
+    center, eigvecs_base, force_radii * scale, (0.7, 0.0, 0.0)
 )
-polys = np.stack([cbook._array_patch_perimeters(a, 1, 1) for a in (x, y, z)], axis=-1)
-vertices = polys.reshape(-1, 3)
-triangles = (
-    [[4 * i + 0, 4 * i + 1, 4 * i + 2] for i in range(len(polys))]
-    + [[4 * i + 2, 4 * i + 3, 4 * i + 0] for i in range(len(polys))]
-    + [[4 * i + 0, 4 * i + 3, 4 * i + 2] for i in range(len(polys))]
-    + [[4 * i + 2, 4 * i + 1, 4 * i + 0] for i in range(len(polys))]
-)
-mesh = o3d.geometry.TriangleMesh(
-    o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(triangles)
-)
-mesh.paint_uniform_color((0, 0.7, 0))
 
 # %%
 # The following code visualizes the result.
 fig = pv.figure()
 fig.plot_graph(tm, "robot_arm", show_visuals=True)
-fig.add_geometry(mesh)
+fig.add_geometry(manip_mesh)
+fig.add_geometry(force_mesh)
 fig.view_init(elev=5, azim=50)
 if "__file__" in globals():
     fig.show()
