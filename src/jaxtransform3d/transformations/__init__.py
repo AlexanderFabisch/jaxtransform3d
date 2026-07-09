@@ -26,6 +26,7 @@ from ._exp_coords import (
     transform_from_exponential_coordinates,
 )
 from ._transform import (
+    adjoint_from_transform,
     apply_transform,
     compose_transforms,
     create_transform,
@@ -35,6 +36,7 @@ from ._transform import (
 
 __all__ = [
     "transform_inverse",
+    "adjoint_from_transform",
     "apply_transform",
     "compose_transforms",
     "create_transform",

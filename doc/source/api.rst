@@ -67,6 +67,7 @@ Transformation Matrices
    ~apply_transform
    ~compose_transforms
    ~create_transform
+   ~adjoint_from_transform
    ~transform_from_exponential_coordinates
    ~exponential_coordinates_from_transform
 
@@ -83,3 +84,20 @@ Dual Quaternions
    ~apply_dual_quaternion
    ~dual_quaternion_from_exponential_coordinates
    ~exponential_coordinates_from_dual_quaternion
+
+
+:mod:`jaxtransform3d.experimental`
+==================================
+
+.. automodule:: jaxtransform3d.experimental
+    :no-members:
+    :no-inherited-members:
+
+Robotics
+--------
+
+.. autosummary::
+   :toctree: _apidoc/
+
+   ~robotics.product_of_exponentials
+   ~robotics.jacobian_space
