@@ -232,7 +232,10 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
 
     # determine angle from traces
     traces = jnp.einsum("...ii", R)
-    cos_angle = 0.5 * (traces - 1.0)
+    # clip to [-1, 1]: floating-point error can push the cosine slightly
+    # outside the valid range (e.g. trace just below -1 for a rotation by pi),
+    # which would make arccos return nan.
+    cos_angle = jnp.clip(0.5 * (traces - 1.0), -1.0, 1.0)
     angle = differentiable_arccos(cos_angle)
 
     # same as:
@@ -256,11 +259,35 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     # factor = jnp.where(angle < 1e-4, factor_taylor, factor)
     # axis_angle = axis_unnormalized * factor[..., jnp.newaxis]
 
-    # special case: angle close to pi
-    R_diag = jnp.clip(jnp.einsum("...ii->...i", R), -1.0, 1.0)
-    signs = 2.0 * (axis_unnormalized >= 0.0).astype(R.dtype) - 1.0
-    axis_close_to_pi = jnp.sqrt(0.5 * (R_diag + 1.0)) * signs
-    angle_close_to_pi = jnp.abs(angle - jnp.pi) < 1e-4
+    # Special case: angle close to pi. Here R is (numerically) symmetric, so
+    # the skew part R - R^T is zero and its sign cannot recover a general axis.
+    # From Rodrigues' formula, R = 2 ee^T - I at pi, i.e. ee^T = 0.5 * (R + I),
+    # whose diagonal holds the squared axis components e_i**2. We read the
+    # magnitudes |e_i| off that diagonal and the relative signs off the
+    # dominant row k = argmax(e_i**2) of the symmetric part, where
+    # sign(R_sym[k, j]) = sign(e_k) * sign(e_j). Using the symmetric part (not
+    # R) keeps this accurate just below pi, where the skew part then fixes the
+    # overall sign of the axis.
+    R_sym = 0.5 * (R + jnp.swapaxes(R, -1, -2))
+    eeT_diag = jnp.clip(0.5 * (jnp.einsum("...ii->...i", R_sym) + 1.0), 0.0, 1.0)
+    dominant = jax.nn.one_hot(jnp.argmax(eeT_diag, axis=-1), 3, dtype=R.dtype)
+    dominant_row = jnp.einsum("...i,...ij->...j", dominant, R_sym)
+    # fix the dominant component to be positive; its diagonal sign is unreliable
+    signs = jnp.where(dominant > 0.0, 1.0, jnp.sign(dominant_row))
+    axis_close_to_pi = jnp.sqrt(eeT_diag) * signs
+    # just below pi the skew part still carries the correct overall sign
+    flip = (angle < jnp.pi) & (
+        jnp.sum(axis_close_to_pi * axis_unnormalized, axis=-1) < 0.0
+    )
+    axis_close_to_pi = jnp.where(
+        flip[..., jnp.newaxis], -axis_close_to_pi, axis_close_to_pi
+    )
+    # arccos loses precision near pi (its slope diverges there), so in
+    # low-precision dtypes the measured angle of a true rotation by pi can be
+    # several sqrt(eps) away from pi. Widen the threshold accordingly so these
+    # rotations still take the branch above; in float64 it stays at 1e-4.
+    pi_threshold = jnp.maximum(1e-4, 10.0 * jnp.sqrt(jnp.finfo(R.dtype).eps))
+    angle_close_to_pi = jnp.abs(angle - jnp.pi) < pi_threshold
     axis_unnormalized = jnp.where(
         angle_close_to_pi[..., jnp.newaxis], axis_close_to_pi, axis_unnormalized
     )

@@ -49,7 +49,8 @@ def test_compact_axis_angle_from_matrix_0dim():
     R = pr.matrix_from_compact_axis_angle(a)
     a1 = pr.compact_axis_angle_from_matrix(R)
     a2 = compact_axis_angle_from_matrix(R)
-    assert_array_almost_equal(a1, a2, decimal=3)
+    # the axis is only defined up to sign at pi
+    jr.assert_compact_axis_angle_equal(a1, a2, decimal=3)
 
     rng = np.random.default_rng(0)
     for _ in range(50):
@@ -91,3 +92,24 @@ def test_compact_axis_angle_from_matrix_2dims():
     a1_compact = a1[..., :3] * a1[..., 3, np.newaxis]
     a2 = compact_axis_angle_from_matrix(R)
     assert_array_almost_equal(a1_compact, a2, decimal=5)
+
+
+def test_compact_axis_angle_from_matrix_pi_general_axis():
+    """Recover a general (non-coordinate) axis for a rotation of pi.
+
+    At pi the matrix is symmetric, so the skew-symmetric part is zero and the
+    axis signs have to come from the symmetric part. The axis is unique only up
+    to sign at pi, hence the round-trip comparison.
+    """
+    rng = np.random.default_rng(84)
+    axis = rng.standard_normal(size=(20, 3))
+    axis /= np.linalg.norm(axis, axis=-1)[..., np.newaxis]
+    for angle in [np.pi, np.pi - 1e-6, np.pi - 1e-4]:
+        a = jnp.asarray(axis * angle)
+        R = matrix_from_compact_axis_angle(a)
+        a2 = compact_axis_angle_from_matrix(R)
+        assert not np.isnan(np.asarray(a2)).any()
+        # the axis is only defined up to sign at pi, so compare the matrices
+        # (decimal=3 reflects the inherent float32 precision loss near pi)
+        R2 = matrix_from_compact_axis_angle(a2)
+        assert_array_almost_equal(R, R2, decimal=3)
