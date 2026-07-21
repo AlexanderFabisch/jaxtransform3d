@@ -137,7 +137,12 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     chex.assert_axis_dimension(R, axis=-2, expected=3)
     chex.assert_axis_dimension(R, axis=-1, expected=3)
 
-    return (R.reshape(-1, 3, 3) @ v.reshape(-1, 3, 1)).reshape(*v.shape)
+    # precision="highest" avoids reduced-precision (TF32) matmul, which XLA
+    # would otherwise select for the batched product and which makes the result
+    # depend on the batch size (see compose_matrices).
+    return jnp.matmul(
+        R.reshape(-1, 3, 3), v.reshape(-1, 3, 1), precision="highest"
+    ).reshape(*v.shape)
 
 
 def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
@@ -183,7 +188,13 @@ def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
     R1 = jnp.asarray(R1)
     R2 = jnp.asarray(R2)
     bigger_shape = R1.shape if R1.size > R2.size else R2.shape
-    return (R1.reshape(-1, 3, 3) @ R2.reshape(-1, 3, 3)).reshape(bigger_shape)
+    # precision="highest" avoids reduced-precision (TF32) matmul, which XLA
+    # would otherwise select for the batched product; without it the result of
+    # composing a single matrix with a batch differs from the element-wise
+    # composition by ~1e-4 in float32.
+    return jnp.matmul(
+        R1.reshape(-1, 3, 3), R2.reshape(-1, 3, 3), precision="highest"
+    ).reshape(bigger_shape)
 
 
 def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
