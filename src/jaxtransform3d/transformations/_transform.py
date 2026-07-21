@@ -106,7 +106,7 @@ def compose_transforms(T1: ArrayLike, T2: ArrayLike) -> jax.Array:
     T2 = jnp.asarray(T2)
     bigger_shape = T1.shape if T1.size > T2.size else T2.shape
     # precision="highest" avoids reduced-precision (TF32) matmul, which XLA
-    # would otherwise select for the batched product; without it the result of
+    # would otherwise select for the batched product. Without it the result of
     # composing a single transform with a batch differs from the element-wise
     # composition by ~1e-4 in float32.
     return jnp.matmul(

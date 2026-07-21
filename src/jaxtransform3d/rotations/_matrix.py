@@ -189,7 +189,7 @@ def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
     R2 = jnp.asarray(R2)
     bigger_shape = R1.shape if R1.size > R2.size else R2.shape
     # precision="highest" avoids reduced-precision (TF32) matmul, which XLA
-    # would otherwise select for the batched product; without it the result of
+    # would otherwise select for the batched product. Without it the result of
     # composing a single matrix with a batch differs from the element-wise
     # composition by ~1e-4 in float32.
     return jnp.matmul(
@@ -283,7 +283,7 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     eeT_diag = jnp.clip(0.5 * (jnp.einsum("...ii->...i", R_sym) + 1.0), 0.0, 1.0)
     dominant = jax.nn.one_hot(jnp.argmax(eeT_diag, axis=-1), 3, dtype=R.dtype)
     dominant_row = jnp.einsum("...i,...ij->...j", dominant, R_sym)
-    # fix the dominant component to be positive; its diagonal sign is unreliable
+    # fix the dominant component positive (its diagonal sign is unreliable)
     signs = jnp.where(dominant > 0.0, 1.0, jnp.sign(dominant_row))
     axis_close_to_pi = jnp.sqrt(eeT_diag) * signs
     # just below pi the skew part still carries the correct overall sign
@@ -296,7 +296,7 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     # arccos loses precision near pi (its slope diverges there), so in
     # low-precision dtypes the measured angle of a true rotation by pi can be
     # several sqrt(eps) away from pi. Widen the threshold accordingly so these
-    # rotations still take the branch above; in float64 it stays at 1e-4.
+    # rotations still take the branch above. In float64 it stays at 1e-4.
     pi_threshold = jnp.maximum(1e-4, 10.0 * jnp.sqrt(jnp.finfo(R.dtype).eps))
     angle_close_to_pi = jnp.abs(angle - jnp.pi) < pi_threshold
     axis_unnormalized = jnp.where(
