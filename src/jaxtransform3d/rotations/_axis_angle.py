@@ -64,11 +64,8 @@ def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.A
     Array([[1., 0., 0.],
            [0., 1., 0.],
            [0., 0., 1.]], dtype=...)
-    >>> import jax
-    >>> a = jax.random.normal(jax.random.PRNGKey(42), shape=(2, 3))
-    >>> a
-    Array([[-0.02830462,  0.46713185,  0.29570296],
-           [ 0.15354592, -0.12403282,  0.21692315]], dtype=...)
+    >>> a = jnp.array([[-0.02830462, 0.46713185, 0.29570296],
+    ...                [0.15354592, -0.12403282, 0.21692315]])
     >>> matrix_from_compact_axis_angle(a)
     Array([[[ 0.85103..., -0.28727...,  0.43955...],
             [ 0.27438...,  0.95699...,  0.09420...],
@@ -157,11 +154,8 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     >>> from jaxtransform3d.rotations import quaternion_from_compact_axis_angle
     >>> quaternion_from_compact_axis_angle(jnp.zeros(3))
     Array([1., 0., 0., 0.], dtype=...)
-    >>> import jax
-    >>> a = jax.random.normal(jax.random.PRNGKey(42), shape=(2, 3))
-    >>> a
-    Array([[-0.0283...,  0.4671...,  0.2957...],
-           [ 0.1535..., -0.1240...,  0.2169...]], dtype=...)
+    >>> a = jnp.array([[-0.02830462, 0.46713185, 0.29570296],
+    ...                [0.15354592, -0.12403282, 0.21692315]])
     >>> quaternion_from_compact_axis_angle(a)
     Array([[ 0.9619..., -0.0139...,  0.2305...,  0.1459...],
            [ 0.9892...,  0.0764..., -0.0617...,  0.1080...]], ...)

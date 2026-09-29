@@ -39,7 +39,7 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
     >>> matrix_inverse(jnp.eye(3))
     Array([[1., 0., 0.],
            [0., 1., 0.],
-           [0., 0., 1.]], dtype=float32)
+           [0., 0., 1.]], dtype=...)
 
     Inversion is inhenrently vectorized. You can easily apply it to any number
     of dimensions, e.g., a 1D list of rotation matrices:
@@ -51,7 +51,7 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
     >>> R = matrix_from_compact_axis_angle(a)
     >>> R_inv = matrix_inverse(R)
     >>> R_inv
-    Array([[[...]]], dtype=float32)
+    Array([[[...]]], dtype=...)
     >>> R_inv.shape
     (20, 3, 3)
     >>> from jaxtransform3d.rotations import compose_matrices
@@ -66,7 +66,7 @@ def matrix_inverse(R: ArrayLike) -> jax.Array:
     >>> R = R.reshape(5, 4, 3, 3)
     >>> R_inv = matrix_inverse(R)
     >>> R_inv
-    Array([[[[...]]]], dtype=float32)
+    Array([[[[...]]]], dtype=...)
     >>> R_inv.shape
     (5, 4, 3, 3)
     >>> I = compose_matrices(R, R_inv)
@@ -124,7 +124,7 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     Array([ 0.5, -2.5,  1. ], ...)
     >>> apply_matrix(R, v)
     Array([[ 0.5, -2.5,  1. ],
-           [ 3. ,  2. , -1. ]], dtype=float32)
+           [ 3. ,  2. , -1. ]], dtype=...)
     """
     R = jnp.asarray(R)
     v = jnp.asarray(v)

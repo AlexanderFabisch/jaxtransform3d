@@ -60,7 +60,7 @@ def norm_matrix(R: ArrayLike) -> jax.Array:
     >>> norm_matrix(jnp.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5]]))
     Array([[1., 0., 0.],
            [0., 1., 0.],
-           [0., 0., 1.]], dtype=float32)
+           [0., 0., 1.]], dtype=...)
     """
     R = jnp.asarray(R)
 
@@ -135,7 +135,7 @@ def robust_polar_decomposition(
     ...     jnp.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5]]))
     Array([[1., 0., 0.],
            [0., 1., 0.],
-           [0., 0., 1.]], dtype=float32)
+           [0., 0., 1.]], dtype=...)
     """
     A = jnp.asarray(A)
 
