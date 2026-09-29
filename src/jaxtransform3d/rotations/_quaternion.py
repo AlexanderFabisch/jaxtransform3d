@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import norm_angle, norm_vector
+from ..utils import differentiable_norm, norm_angle, norm_vector
 
 
 def norm_quaternion(q: ArrayLike) -> jax.Array:
@@ -264,24 +264,14 @@ def compact_axis_angle_from_quaternion(q: ArrayLike) -> jax.Array:
 
     real = q[..., 0]
     vec = q[..., 1:]
-    vec_norm = jnp.linalg.norm(vec, axis=-1)
+    vec_norm = differentiable_norm(vec, axis=-1)
 
-    # Alternative solution:
-    # angle = 2.0 * jnp.atan2(jnp.linalg.norm(vec, axis=-1), real)
-    angle = norm_angle(2.0 * jnp.arccos(jnp.clip(real, -1.0, 1.0)))
-
-    # Alternative solution: small angle Taylor series expansion based on
-    # https://github.com/scipy/scipy/blob/ae25ba2385e62d5372a47ed59f9cfddc5ab3dc6a/scipy/spatial/transform/_rotation.pyx#L1973
-    # s = jnp.sin(0.5 * angle)
-    # s_safe = jnp.where(s == 0, 1.0, s)
-    # scale = angle / s_safe
-    # angle_p2 = angle * angle
-    # scale_taylor = 2.0 + angle_p2 / 12.0 + angle_p2 * angle_p2 * (7.0 / 2880.0)
-    # scale = jnp.where(angle < 1e-3, scale_taylor, scale)
-    # axis_angle = scale[..., jnp.newaxis] * vec
+    # atan2 uses both sin(angle / 2) and cos(angle / 2) and, in contrast to
+    # arccos of the real part, retains precision near 0 and pi.
+    angle = norm_angle(2.0 * jnp.arctan2(vec_norm, real))
 
     axis = norm_vector(vec, norm=vec_norm)
     axis_angle = axis * angle[..., jnp.newaxis]
 
-    angle_nonzero = (vec_norm >= jnp.finfo(q.dtype).eps)[..., jnp.newaxis]
+    angle_nonzero = (vec_norm > 0.0)[..., jnp.newaxis]
     return jnp.where(angle_nonzero, axis_angle, 0.0)

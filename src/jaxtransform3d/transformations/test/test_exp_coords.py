@@ -3,7 +3,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytransform3d.trajectories as ptr
 import pytransform3d.transformations as pt
-from numpy.testing import assert_array_almost_equal
+from jax.experimental import enable_x64
+from numpy.testing import assert_allclose, assert_array_almost_equal
 
 import jaxtransform3d.transformations as jt
 
@@ -118,3 +119,34 @@ def test_dual_quaternion_from_exponential_coordinates_2dims():
     flip = np.sign(dual_quat_actual[..., 0]) != np.sign(dual_quat_expected[..., 0])
     dual_quat_actual = dual_quat_actual.at[flip].set(-dual_quat_actual[flip])
     assert_array_almost_equal(dual_quat_actual, dual_quat_expected)
+
+
+def test_logarithmic_maps_small_angles():
+    """The translation survives when the rotation is tiny or zero."""
+    with enable_x64():
+        axis = jnp.array([1.0, 2.0, -2.0]) / 3.0
+        t = jnp.array([0.3, -0.2, 0.5])
+        for angle in [1e-4, 1e-6, 1e-8, 1e-10, 1e-16, 1e-100, 0.0]:
+            exp_coords = jnp.concatenate((axis * angle, t))
+            T = jt.transform_from_exponential_coordinates(exp_coords)
+            assert_allclose(
+                jt.exponential_coordinates_from_transform(T), exp_coords, rtol=1e-12
+            )
+            dq = jt.dual_quaternion_from_exponential_coordinates(exp_coords)
+            assert_allclose(
+                jt.exponential_coordinates_from_dual_quaternion(dq),
+                exp_coords,
+                rtol=1e-12,
+            )
+
+
+def test_logarithmic_maps_gradient_identity_and_pure_translation():
+    for t in [jnp.zeros(3), jnp.array([0.3, -0.2, 0.5])]:
+        exp_coords = jnp.concatenate((jnp.zeros(3), t))
+        T = jt.transform_from_exponential_coordinates(exp_coords)
+        dq = jt.dual_quaternion_from_exponential_coordinates(exp_coords)
+        for jac in (jax.jacfwd, jax.jacrev):
+            J_T = jac(jt.exponential_coordinates_from_transform)(T)
+            assert np.isfinite(np.asarray(J_T)).all()
+            J_dq = jac(jt.exponential_coordinates_from_dual_quaternion)(dq)
+            assert np.isfinite(np.asarray(J_dq)).all()

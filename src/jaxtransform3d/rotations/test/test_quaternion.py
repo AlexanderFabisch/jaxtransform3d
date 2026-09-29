@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 import pytransform3d.batch_rotations as pbr
 import pytransform3d.rotations as pr
-from numpy.testing import assert_array_almost_equal
+from jax.experimental import enable_x64
+from numpy.testing import assert_allclose, assert_array_almost_equal
 
 import jaxtransform3d.rotations as jr
 
@@ -121,3 +122,31 @@ def test_compact_axis_angle_from_quaternion_ndims():
     a_3d = pbr.axis_angles_from_quaternions(q_3d)
     a_3d = a_3d[..., :3] * a_3d[..., 3, np.newaxis]
     assert_array_almost_equal(a_3d, compact_axis_angle_from_quaternion(q_3d))
+
+
+def test_compact_axis_angle_from_quaternion_small_angle():
+    with enable_x64():
+        axis = jnp.array([1.0, 2.0, -2.0]) / 3.0
+        for angle in [1e-4, 1e-6, 1e-8, 1e-10, 1e-16, 1e-100]:
+            a = axis * angle
+            q = jr.quaternion_from_compact_axis_angle(a)
+            a2 = jr.compact_axis_angle_from_quaternion(q)
+            assert_allclose(a2, a, rtol=1e-12)
+
+
+def test_compact_axis_angle_from_quaternion_negative_real():
+    rng = np.random.default_rng(87)
+    q = pbr.norm_vectors(rng.standard_normal(size=(20, 4)))
+    q[:, 0] = -np.abs(q[:, 0])
+    a = compact_axis_angle_from_quaternion(q)
+    assert (np.linalg.norm(a, axis=-1) <= np.pi + 1e-6).all()
+    q2 = quaternion_from_compact_axis_angle(a)
+    for i in range(len(q)):
+        pr.assert_quaternion_equal(q[i], q2[i], decimal=5)
+
+
+def test_compact_axis_angle_from_quaternion_gradient_at_identity():
+    jac = jax.jacfwd(jr.compact_axis_angle_from_quaternion)(
+        jnp.array([1.0, 0.0, 0.0, 0.0])
+    )
+    assert np.isfinite(np.asarray(jac)).all()

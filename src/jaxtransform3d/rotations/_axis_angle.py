@@ -178,7 +178,7 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
     # small angle Taylor series expansion based on
     # https://github.com/scipy/scipy/blob/ae25ba2385e62d5372a47ed59f9cfddc5ab3dc6a/scipy/spatial/transform/_rotation.pyx#L1300
     angle_p2 = angle * angle
-    axis_scale_taylor = 0.5 - angle_p2 / 48.0 * angle_p2 * angle_p2 / 3840.0
+    axis_scale_taylor = 0.5 - angle_p2 / 48.0 + angle_p2 * angle_p2 / 3840.0
     axis_scale = jnp.where(angle < 1e-3, axis_scale_taylor, axis_scale)
 
     real = jnp.cos(half_angle)[..., jnp.newaxis]

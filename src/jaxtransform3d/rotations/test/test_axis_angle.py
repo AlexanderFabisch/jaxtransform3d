@@ -3,7 +3,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytransform3d.batch_rotations as pbr
 import pytransform3d.rotations as pr
-from numpy.testing import assert_array_almost_equal
+from jax.experimental import enable_x64
+from numpy.testing import assert_allclose, assert_array_almost_equal
 
 import jaxtransform3d.rotations as jr
 
@@ -43,3 +44,16 @@ def test_matrix_from_compact_axis_angle_2dims():
     assert_array_almost_equal(
         matrix_from_compact_axis_angle(a), pbr.matrices_from_compact_axis_angles(a)
     )
+
+
+def test_quaternion_from_compact_axis_angle_taylor_branch():
+    """The small-angle Taylor branch matches the closed form.
+
+    The error of a wrong series is far below float32 precision, so this
+    test runs in float64.
+    """
+    with enable_x64():
+        axis = jnp.array([1.0, 2.0, -2.0]) / 3.0
+        for angle in [1e-3 * (1.0 - 1e-6), 1e-4]:
+            q = jr.quaternion_from_compact_axis_angle(axis * angle)
+            assert_allclose(q[1:], np.sin(0.5 * angle) * axis, rtol=1e-14)

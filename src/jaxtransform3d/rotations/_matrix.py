@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import differentiable_arccos, norm_vector
+from ..utils import differentiable_norm, norm_vector
 
 
 def matrix_inverse(R: ArrayLike) -> jax.Array:
@@ -241,18 +241,11 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     chex.assert_axis_dimension(R, axis=-2, expected=3)
     chex.assert_axis_dimension(R, axis=-1, expected=3)
 
-    # determine angle from traces
-    traces = jnp.einsum("...ii", R)
-    # clip to [-1, 1]: floating-point error can push the cosine slightly
-    # outside the valid range (e.g. trace just below -1 for a rotation by pi),
-    # which would make arccos return nan.
-    cos_angle = jnp.clip(0.5 * (traces - 1.0), -1.0, 1.0)
-    angle = differentiable_arccos(cos_angle)
-
     # same as:
     # RT = R.transpose(tuple(range(R.ndim - 2)) + (R.ndim - 1, R.ndim - 2))
     # matrix_unnormalized = R - RT
     # axis_unnormalized = cross_product_vector(matrix_unnormalized)
+    # From Rodrigues' formula, this is 2 * sin(angle) * axis.
     axis_unnormalized = jnp.stack(
         (
             R[..., 2, 1] - R[..., 1, 2],
@@ -262,13 +255,16 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
         axis=-1,
     )
 
-    # Direct solution with correction for small angles with Taylor series.
-    # We do not use it because normalizing the axis seems to be more accurate.
-    # s = jnp.sin(angle)
-    # factor = 0.5 * angle / jnp.where(s == 0.0, 1.0, s)
-    # factor_taylor = 0.5 + angle**2 / 12.0 + 7.0 * angle**4 / 720.0  # + O(theta**6)
-    # factor = jnp.where(angle < 1e-4, factor_taylor, factor)
-    # axis_angle = axis_unnormalized * factor[..., jnp.newaxis]
+    # Determine the angle with atan2 from sin(angle) (skew part) and
+    # cos(angle) (trace). arccos of the trace alone loses precision near 0
+    # and pi: for small angles the trace rounds to 3, while the skew part
+    # still carries the angle with full relative precision.
+    traces = jnp.einsum("...ii", R)
+    # clip to [-1, 1]: floating-point error can push the cosine slightly
+    # outside the valid range (e.g. trace just below -1 for a rotation by pi)
+    cos_angle = jnp.clip(0.5 * (traces - 1.0), -1.0, 1.0)
+    sin_angle = 0.5 * differentiable_norm(axis_unnormalized, axis=-1)
+    angle = jnp.arctan2(sin_angle, cos_angle)
 
     # Special case: angle close to pi. Here R is (numerically) symmetric, so
     # the skew part R - R^T is zero and its sign cannot recover a general axis.
@@ -293,11 +289,9 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     axis_close_to_pi = jnp.where(
         flip[..., jnp.newaxis], -axis_close_to_pi, axis_close_to_pi
     )
-    # arccos loses precision near pi (its slope diverges there), so in
-    # low-precision dtypes the measured angle of a true rotation by pi can be
-    # several sqrt(eps) away from pi. Widen the threshold accordingly so these
-    # rotations still take the branch above. In float64 it stays at 1e-4.
-    pi_threshold = jnp.maximum(1e-4, 10.0 * jnp.sqrt(jnp.finfo(R.dtype).eps))
+    # Near pi the skew part is only 2 * sin(angle), so the axis read off it
+    # is dominated by rounding errors; use the symmetric solution instead.
+    pi_threshold = 1e-4
     angle_close_to_pi = jnp.abs(angle - jnp.pi) < pi_threshold
     axis_unnormalized = jnp.where(
         angle_close_to_pi[..., jnp.newaxis], axis_close_to_pi, axis_unnormalized

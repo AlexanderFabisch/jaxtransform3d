@@ -3,7 +3,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytransform3d.batch_rotations as pbr
 import pytransform3d.rotations as pr
-from numpy.testing import assert_array_almost_equal
+from jax.experimental import enable_x64
+from numpy.testing import assert_allclose, assert_array_almost_equal
 
 import jaxtransform3d.rotations as jr
 
@@ -113,3 +114,22 @@ def test_compact_axis_angle_from_matrix_pi_general_axis():
         # (decimal=3 reflects the inherent float32 precision loss near pi)
         R2 = matrix_from_compact_axis_angle(a2)
         assert_array_almost_equal(R, R2, decimal=3)
+
+
+def test_compact_axis_angle_from_matrix_small_angle():
+    """Small angles are recovered from the skew part, not only the trace.
+
+    For small angles the trace rounds to 3 and arccos of it would return 0.
+    """
+    with enable_x64():
+        axis = jnp.array([1.0, 2.0, -2.0]) / 3.0
+        for angle in [1e-4, 1e-6, 1e-8, 1e-10, 1e-16, 1e-100]:
+            a = axis * angle
+            R = jr.matrix_from_compact_axis_angle(a)
+            a2 = jr.compact_axis_angle_from_matrix(R)
+            assert_allclose(a2, a, rtol=1e-12)
+
+
+def test_compact_axis_angle_from_matrix_gradient_at_identity():
+    jac = jax.jacfwd(jr.compact_axis_angle_from_matrix)(jnp.eye(3))
+    assert np.isfinite(np.asarray(jac)).all()
