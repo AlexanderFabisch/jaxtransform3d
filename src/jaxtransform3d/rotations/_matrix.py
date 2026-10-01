@@ -291,7 +291,7 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     )
     # Near pi the skew part is only 2 * sin(angle), so the axis read off it
     # is dominated by rounding errors; use the symmetric solution instead.
-    pi_threshold = 1e-4
+    pi_threshold = 1e-6
     angle_close_to_pi = jnp.abs(angle - jnp.pi) < pi_threshold
     axis_unnormalized = jnp.where(
         angle_close_to_pi[..., jnp.newaxis], axis_close_to_pi, axis_unnormalized
