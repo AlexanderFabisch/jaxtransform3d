@@ -412,14 +412,14 @@ def update_ellipsoids(thetas, manip_ellipsoid, force_ellipsoid):
     center = np.asarray(ee2base[:3, 3], dtype=float)
 
     manip_radii = np.sqrt(np.asarray(eigvals, dtype=float))
-    manip_ellipsoid.set_data(center, eigvecs_base, manip_radii)
+    manip_ellipsoid.set_data(center, eigvecs_base, manip_radii / 3)
 
     # Force ellipsoid: dual ellipsoid with inverse radii. Skip directions
     # where the manipulator is singular (eigvals == 0).
     force_radii = np.where(manip_radii > 1e-6, 1.0 / np.maximum(manip_radii, 1e-6), 0.0)
     # Normalize so the two ellipsoids are visually comparable.
-    scale = manip_radii.max() / max(force_radii.max(), 1e-6) * 0.5
-    force_ellipsoid.set_data(center, eigvecs_base, force_radii * scale)
+    scale = manip_radii.max() / max(force_radii.max(), 1e-6)
+    force_ellipsoid.set_data(center, eigvecs_base, force_radii * scale / 3)
 
 
 # %%
