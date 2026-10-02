@@ -6,6 +6,7 @@ from ..transformations import (
     transform_from_exponential_coordinates,
     transform_inverse,
 )
+from ..utils import matmul
 
 
 def product_of_exponentials(
@@ -79,8 +80,8 @@ def product_of_exponentials(
 
     T = jnp.eye(4)
     for joint_displacement in joint_displacements:
-        T = T @ joint_displacement
-    return T @ ee2base_home
+        T = matmul(T, joint_displacement)
+    return matmul(T, ee2base_home)
 
 
 def jacobian_space(screw_axes_home: jnp.ndarray, thetas: jnp.ndarray) -> jnp.ndarray:
@@ -156,8 +157,8 @@ def jacobian_space(screw_axes_home: jnp.ndarray, thetas: jnp.ndarray) -> jnp.nda
     Js = jnp.copy(screw_axes_home.T)
     T = jnp.eye(4)
     for i in range(1, len(thetas)):
-        T = T @ transform_from_exponential_coordinates(exp_coords[i - 1])
-        Js = Js.at[:, i].set(adjoint_from_transform(T) @ screw_axes_home[i])
+        T = matmul(T, transform_from_exponential_coordinates(exp_coords[i - 1]))
+        Js = Js.at[:, i].set(matmul(adjoint_from_transform(T), screw_axes_home[i]))
     return Js
 
 
@@ -221,4 +222,4 @@ def jacobian_body(
     """
     Js = jacobian_space(screw_axes_home, thetas)
     T_sb = product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
-    return adjoint_from_transform(transform_inverse(T_sb)) @ Js
+    return matmul(adjoint_from_transform(transform_inverse(T_sb)), Js)

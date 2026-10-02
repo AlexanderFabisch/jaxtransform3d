@@ -254,7 +254,7 @@ def adjoint_from_transform(T: ArrayLike) -> jnp.ndarray:
 
     adj_A2B = jnp.zeros(T.shape[:-2] + (6, 6))
     adj_A2B = adj_A2B.at[..., :3, :3].set(R)
-    adj_A2B = adj_A2B.at[..., 3:, :3].set(cross_product_matrix(t) @ R)
+    adj_A2B = adj_A2B.at[..., 3:, :3].set(matmul(cross_product_matrix(t), R))
     adj_A2B = adj_A2B.at[..., 3:, 3:].set(R)
     return adj_A2B
 

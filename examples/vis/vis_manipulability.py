@@ -21,12 +21,7 @@ from pytransform3d.urdf import UrdfTransformManager
 
 import jaxtransform3d.experimental.robotics as jrob
 import jaxtransform3d.transformations as jt
-
-# On GPUs, JAX computes float32 matrix products with reduced precision by
-# default (e.g., TF32 with a 10 bit mantissa). This results in errors of about
-# 1e-4 in forward kinematics and Jacobians, so the inverse kinematics would
-# stagnate at a pose error of about 0.3 mm. We use full precision instead.
-jax.config.update("jax_default_matmul_precision", "highest")
+from jaxtransform3d.utils import matmul
 
 
 # %%
@@ -213,8 +208,8 @@ key = jax.random.key(42)
 #
 # This is an exact algebraic identity and should hold to machine precision.
 T_sb = jrob.product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
-Jb_via_adjoint = jt.adjoint_from_transform(jt.transform_inverse(T_sb)) @ jacobian_space(
-    thetas
+Jb_via_adjoint = matmul(
+    jt.adjoint_from_transform(jt.transform_inverse(T_sb)), jacobian_space(thetas)
 )
 print(
     "|J_body - Ad(T_sb^-1) J_space|_max =",
@@ -266,7 +261,8 @@ def manipulability_ellipsoid(thetas: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndar
     # Body Jacobian: (omega; v) convention, so rows 3:6 are the linear part.
     Jb = jacobian_body(thetas)
     Jv = Jb[3:, :]
-    A_v = Jv @ Jv.T
+    # Full precision, GPUs would compute float32 products with TF32 otherwise.
+    A_v = matmul(Jv, Jv.T)
     eigvals, eigvecs = jnp.linalg.eigh(A_v)
     return jnp.maximum(eigvals, 0.0), eigvecs
 
