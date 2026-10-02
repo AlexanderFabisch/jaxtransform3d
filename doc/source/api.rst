@@ -24,6 +24,7 @@ Rotation Matrices
    ~apply_matrix
    ~matrix_from_compact_axis_angle
    ~compact_axis_angle_from_matrix
+   ~quaternion_from_matrix
 
 Quaternions
 -----------

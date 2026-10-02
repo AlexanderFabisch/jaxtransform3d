@@ -28,6 +28,7 @@ from ._matrix import (
     compact_axis_angle_from_matrix,
     compose_matrices,
     matrix_inverse,
+    quaternion_from_matrix,
 )
 from ._polar_decomp import norm_matrix, robust_polar_decomposition
 from ._quaternion import (
@@ -51,6 +52,7 @@ __all__ = [
     "quaternion_conjugate",
     "apply_quaternion",
     "compact_axis_angle_from_quaternion",
+    "quaternion_from_matrix",
     "norm_matrix",
     "robust_polar_decomposition",
     "left_jacobian_SO3",

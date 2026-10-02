@@ -9,6 +9,7 @@ from ..rotations import (
     left_jacobian_SO3_inv,
     matrix_inverse,
 )
+from ..utils import matmul
 
 
 def transform_inverse(T: ArrayLike) -> jax.Array:
@@ -105,13 +106,7 @@ def compose_transforms(T1: ArrayLike, T2: ArrayLike) -> jax.Array:
     T1 = jnp.asarray(T1)
     T2 = jnp.asarray(T2)
     bigger_shape = T1.shape if T1.size > T2.size else T2.shape
-    # precision="highest" avoids reduced-precision (TF32) matmul, which XLA
-    # would otherwise select for the batched product. Without it the result of
-    # composing a single transform with a batch differs from the element-wise
-    # composition by ~1e-4 in float32.
-    return jnp.matmul(
-        T1.reshape(-1, 4, 4), T2.reshape(-1, 4, 4), precision="highest"
-    ).reshape(bigger_shape)
+    return matmul(T1.reshape(-1, 4, 4), T2.reshape(-1, 4, 4)).reshape(bigger_shape)
 
 
 def create_transform(R: ArrayLike, t: ArrayLike) -> jax.Array:
@@ -221,6 +216,6 @@ def exponential_coordinates_from_transform(T: ArrayLike) -> jax.Array:
     t = T[..., :3, 3]
 
     axis_angle = compact_axis_angle_from_matrix(R)
-    v_theta = (left_jacobian_SO3_inv(axis_angle) @ t[..., jnp.newaxis])[..., 0]
+    v_theta = matmul(left_jacobian_SO3_inv(axis_angle), t[..., jnp.newaxis])[..., 0]
 
     return jnp.concatenate((axis_angle, v_theta), axis=-1)

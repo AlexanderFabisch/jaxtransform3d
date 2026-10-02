@@ -2,9 +2,12 @@ import jax
 import jax.numpy as jnp
 
 from ..utils import (
+    COSC_SERIES,
+    COTC_SERIES,
+    SINC3_SERIES,
     cross_product_matrix,
-    differentiable_norm,
-    norm_vector,
+    matmul,
+    series_or_closed_form,
 )
 
 
@@ -42,25 +45,23 @@ def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
     left_jacobian_SO3_inv :
         Inverse left Jacobian of SO(3) at theta (angle of rotation).
     """
-    theta = differentiable_norm(axis_angle, axis=-1)
-    theta_safe = jnp.where(theta > 0.0, theta, 1.0)
-    omega_unit = norm_vector(axis_angle, norm=theta)
-    omega_matrix = cross_product_matrix(omega_unit)
+    axis_angle = jnp.asarray(axis_angle)
+    # (1 - cos(theta)) / theta ** 2
+    factor1 = series_or_closed_form(
+        axis_angle, lambda t: (1.0 - jnp.cos(t)) / t**2, COSC_SERIES
+    )
+    # (theta - sin(theta)) / theta ** 3
+    factor2 = series_or_closed_form(
+        axis_angle, lambda t: (t - jnp.sin(t)) / t**3, SINC3_SERIES
+    )
 
-    eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
-    # This is (1 - cos(theta)) / theta. The half-angle identity
-    # 1 - cos(theta) = 2 * sin(theta / 2) ** 2 avoids subtracting two values
-    # close to 1, which would cause a relative error of about eps / theta ** 2.
-    factor1 = 2.0 * jnp.sin(0.5 * theta_safe) ** 2 / theta_safe
-    factor2 = 1.0 - jnp.sin(theta_safe) / theta_safe
-    J = (
+    omega_matrix = cross_product_matrix(axis_angle)
+    eye = jnp.broadcast_to(jnp.eye(3, dtype=omega_matrix.dtype), omega_matrix.shape)
+    return (
         eye
         + factor1[..., jnp.newaxis, jnp.newaxis] * omega_matrix
-        + factor2[..., jnp.newaxis, jnp.newaxis] * omega_matrix @ omega_matrix
+        + factor2[..., jnp.newaxis, jnp.newaxis] * matmul(omega_matrix, omega_matrix)
     )
-    J_taylor = left_jacobian_SO3_series(axis_angle)
-
-    return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_taylor, J)
 
 
 def left_jacobian_SO3_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
@@ -85,7 +86,7 @@ def left_jacobian_SO3_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     pxn = eye
     J = eye
     for n in range(10):
-        pxn = pxn @ px / (n + 2)
+        pxn = matmul(pxn, px) / (n + 2)
         J = J + pxn
     return J
 
@@ -119,21 +120,19 @@ def left_jacobian_SO3_inv(axis_angle: jnp.ndarray) -> jnp.ndarray:
     left_jacobian_SO3_inv_series :
         Inverse left Jacobian of SO(3) at theta from Taylor series.
     """
-    theta = differentiable_norm(axis_angle, axis=-1)
-    theta_safe = jnp.where(theta > 0.0, theta, 1.0)
-    omega_unit = norm_vector(axis_angle, norm=theta)
-    omega_matrix = cross_product_matrix(omega_unit)
-
-    eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
-    factor1 = 0.5 * theta
-    factor2 = 1.0 - 0.5 * theta / jnp.tan(theta_safe / 2.0)
-    J_inv = (
-        eye
-        - factor1[..., jnp.newaxis, jnp.newaxis] * omega_matrix
-        + factor2[..., jnp.newaxis, jnp.newaxis] * omega_matrix @ omega_matrix
+    axis_angle = jnp.asarray(axis_angle)
+    # (1 - theta / (2 * tan(theta / 2))) / theta ** 2
+    factor = series_or_closed_form(
+        axis_angle, lambda t: (1.0 - 0.5 * t / jnp.tan(0.5 * t)) / t**2, COTC_SERIES
     )
-    J_inv_taylor = left_jacobian_SO3_inv_series(axis_angle)
-    return jnp.where(theta[..., jnp.newaxis, jnp.newaxis] < 1e-3, J_inv_taylor, J_inv)
+
+    omega_matrix = cross_product_matrix(axis_angle)
+    eye = jnp.broadcast_to(jnp.eye(3, dtype=omega_matrix.dtype), omega_matrix.shape)
+    return (
+        eye
+        - 0.5 * omega_matrix
+        + factor[..., jnp.newaxis, jnp.newaxis] * matmul(omega_matrix, omega_matrix)
+    )
 
 
 def left_jacobian_SO3_inv_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
@@ -162,6 +161,6 @@ def left_jacobian_SO3_inv_series(axis_angle: jnp.ndarray) -> jnp.ndarray:
     px = cross_product_matrix(axis_angle)
     b = jax.scipy.special.bernoulli(11)
     for n in range(10):
-        pxn = pxn @ px / (n + 1)
+        pxn = matmul(pxn, px) / (n + 1)
         J_inv = J_inv + b[n + 1] * pxn
     return J_inv

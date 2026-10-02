@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import norm_vector
+from ..utils import matmul, norm_vector
 from ._axis_angle import matrix_from_compact_axis_angle
 
 
@@ -153,5 +153,5 @@ def robust_polar_decomposition(
         omega = column_vector_cross_products.sum(axis=0) / (
             abs(column_vector_dot_products_sum) + eps
         )
-        current_R = jnp.dot(matrix_from_compact_axis_angle(omega), current_R)
+        current_R = matmul(matrix_from_compact_axis_angle(omega), current_R)
     return current_R

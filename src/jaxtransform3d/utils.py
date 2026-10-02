@@ -1,6 +1,7 @@
 """Utility functions."""
 
 from functools import partial
+from math import factorial
 
 import jax
 import jax.numpy as jnp
@@ -142,6 +143,10 @@ def norm_vector(vec: ArrayLike, norm: ArrayLike | None = None) -> jax.Array:
     """
     vec = jnp.asarray(vec)
     if norm is None:
+        # Scaling by the largest component does not change the result, but
+        # the derivative does not overflow for tiny vectors.
+        scale = jax.lax.stop_gradient(jnp.max(jnp.abs(vec), axis=-1, keepdims=True))
+        vec = vec / jnp.where(scale > 0.0, scale, 1.0)
         norm = differentiable_norm(vec, axis=-1)
     norm = jnp.where(norm != 0.0, norm, 1.0)
     return vec / norm[..., jnp.newaxis]
@@ -197,3 +202,77 @@ def cross_product_matrix(v: ArrayLike) -> jnp.ndarray:
     col3 = jnp.stack((v2, -v1, z), axis=-1)
 
     return jnp.stack((col1, col2, col3), axis=-1)
+
+
+def matmul(a: ArrayLike, b: ArrayLike) -> jax.Array:
+    """Matrix product with full floating-point precision.
+
+    On GPUs, XLA computes float32 matrix products with reduced precision by
+    default (e.g., TF32 with a 10 bit mantissa), which results in relative
+    errors of about 1e-4.
+
+    Parameters
+    ----------
+    a : array-like, shape (..., n, m)
+        First matrix.
+
+    b : array-like, shape (..., m, k)
+        Second matrix.
+
+    Returns
+    -------
+    ab : array, shape (..., n, k)
+        Matrix product.
+    """
+    return jnp.matmul(a, b, precision=jax.lax.Precision.HIGHEST)
+
+
+# Coefficients of Taylor series in t ** 2 of functions of the rotation angle t
+# sin(t) / t
+SINC_SERIES = tuple((-1.0) ** k / factorial(2 * k + 1) for k in range(8))
+# (1 - cos(t)) / t ** 2
+COSC_SERIES = tuple((-1.0) ** k / factorial(2 * k + 2) for k in range(8))
+# (t - sin(t)) / t ** 3
+SINC3_SERIES = tuple((-1.0) ** k / factorial(2 * k + 3) for k in range(8))
+# (1 - t / (2 tan(t / 2))) / t ** 2 with coefficients |B_2k| / (2k)! and
+# Bernoulli numbers B_2k
+COTC_SERIES = tuple(
+    b / factorial(2 * k + 2)
+    for k, b in enumerate(
+        (1 / 6, 1 / 30, 1 / 42, 1 / 30, 5 / 66, 691 / 2730, 7 / 6, 3617 / 510)
+    )
+)
+
+
+def series_or_closed_form(x: jnp.ndarray, closed_form, coefficients) -> jnp.ndarray:
+    """Evaluate a function of the norm t of x from Taylor series or closed form.
+
+    Closed forms of the coefficients of exponential maps and Jacobians divide
+    differences of sin and cos by powers of t. Their values and in particular
+    their derivatives lose precision for small t. We use the Taylor series for
+    t < 0.5, where the first omitted term of the series with 8 terms is below
+    1e-17 relative to the result.
+
+    Parameters
+    ----------
+    x : array, shape (..., n)
+        Vectors, e.g., compact axis-angle representations.
+
+    closed_form : callable
+        Closed form as a function of t. Only evaluated for t >= 0.5.
+
+    coefficients : tuple
+        Coefficients c_k of the Taylor series sum_k c_k t ** (2k).
+
+    Returns
+    -------
+    y : array, shape (...)
+        Function values.
+    """
+    t = differentiable_norm(x, axis=-1)
+    use_series = t < 0.5
+    # The derivative of t ** 2 does not divide by t. Safe arguments in the
+    # unused branch avoid NaN gradients.
+    t2 = jnp.where(use_series, jnp.sum(x * x, axis=-1), 0.0)
+    series = jnp.polyval(jnp.array(coefficients[::-1], dtype=t2.dtype), t2)
+    return jnp.where(use_series, series, closed_form(jnp.where(use_series, 1.0, t)))

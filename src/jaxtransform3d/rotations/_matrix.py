@@ -3,7 +3,8 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import differentiable_norm, norm_vector
+from ..utils import matmul, norm_vector
+from ._quaternion import compact_axis_angle_from_quaternion
 
 
 def matrix_inverse(R: ArrayLike) -> jax.Array:
@@ -137,12 +138,7 @@ def apply_matrix(R: ArrayLike, v: ArrayLike) -> jax.Array:
     chex.assert_axis_dimension(R, axis=-2, expected=3)
     chex.assert_axis_dimension(R, axis=-1, expected=3)
 
-    # precision="highest" avoids reduced-precision (TF32) matmul, which XLA
-    # would otherwise select for the batched product and which makes the result
-    # depend on the batch size (see compose_matrices).
-    return jnp.matmul(
-        R.reshape(-1, 3, 3), v.reshape(-1, 3, 1), precision="highest"
-    ).reshape(*v.shape)
+    return matmul(R.reshape(-1, 3, 3), v.reshape(-1, 3, 1)).reshape(*v.shape)
 
 
 def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
@@ -188,13 +184,7 @@ def compose_matrices(R1: ArrayLike, R2: ArrayLike) -> jax.Array:
     R1 = jnp.asarray(R1)
     R2 = jnp.asarray(R2)
     bigger_shape = R1.shape if R1.size > R2.size else R2.shape
-    # precision="highest" avoids reduced-precision (TF32) matmul, which XLA
-    # would otherwise select for the batched product. Without it the result of
-    # composing a single matrix with a batch differs from the element-wise
-    # composition by ~1e-4 in float32.
-    return jnp.matmul(
-        R1.reshape(-1, 3, 3), R2.reshape(-1, 3, 3), precision="highest"
-    ).reshape(bigger_shape)
+    return matmul(R1.reshape(-1, 3, 3), R2.reshape(-1, 3, 3)).reshape(bigger_shape)
 
 
 def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
@@ -241,61 +231,88 @@ def compact_axis_angle_from_matrix(R: ArrayLike) -> jax.Array:
     chex.assert_axis_dimension(R, axis=-2, expected=3)
     chex.assert_axis_dimension(R, axis=-1, expected=3)
 
-    # same as:
-    # RT = R.transpose(tuple(range(R.ndim - 2)) + (R.ndim - 1, R.ndim - 2))
-    # matrix_unnormalized = R - RT
-    # axis_unnormalized = cross_product_vector(matrix_unnormalized)
-    # From Rodrigues' formula, this is 2 * sin(angle) * axis.
-    axis_unnormalized = jnp.stack(
+    # The axis cannot be read off the skew-symmetric part R - R^T accurately
+    # close to pi. The conversion to a quaternion avoids this.
+    return compact_axis_angle_from_quaternion(quaternion_from_matrix(R))
+
+
+def quaternion_from_matrix(R: ArrayLike) -> jax.Array:
+    r"""Compute quaternion from rotation matrix.
+
+    We use the method of Markley (2008), which is a variant of Shepperd's
+    method (1978): each of the four columns of the symmetric matrix
+
+    .. math::
+
+        \boldsymbol{K} = \left( \begin{array}{cccc}
+        1 + tr(\boldsymbol{R}) & r_{32} - r_{23} & r_{13} - r_{31}
+        & r_{21} - r_{12}\\
+        r_{32} - r_{23} & 1 + 2 r_{11} - tr(\boldsymbol{R})
+        & r_{12} + r_{21} & r_{13} + r_{31}\\
+        r_{13} - r_{31} & r_{12} + r_{21} & 1 + 2 r_{22} - tr(\boldsymbol{R})
+        & r_{23} + r_{32}\\
+        r_{21} - r_{12} & r_{13} + r_{31} & r_{23} + r_{32}
+        & 1 + 2 r_{33} - tr(\boldsymbol{R})
+        \end{array} \right) = 4 \boldsymbol{q} \boldsymbol{q}^T
+
+    is a multiple of the quaternion. We normalize the column with the largest
+    diagonal element, which is at least 1, so the result is accurate and
+    differentiable for all rotations.
+
+    Parameters
+    ----------
+    R : array-like, shape (..., 3, 3)
+        Rotation matrix.
+
+    Returns
+    -------
+    q : array, shape (..., 4)
+        Unit quaternion to represent rotation: (w, x, y, z).
+
+    See also
+    --------
+    compact_axis_angle_from_matrix : Logarithmic map for rotation matrices.
+
+    Examples
+    --------
+    >>> import jax.numpy as jnp
+    >>> from jaxtransform3d.rotations import quaternion_from_matrix
+    >>> quaternion_from_matrix(jnp.eye(3))
+    Array([1., 0., 0., 0.], dtype=...)
+    >>> quaternion_from_matrix(
+    ...     jnp.array([[1., 0., 0.], [0., -1., 0.], [0., 0., -1.]]))
+    Array([0., 1., 0., 0.], dtype=...)
+
+    References
+    ----------
+    .. [1] Markley, F. L. (2008). Unit Quaternion from Rotation Matrix.
+       Journal of Guidance, Control, and Dynamics, 31(2), pp. 440-442,
+       doi: 10.2514/1.31730.
+    """
+    R = jnp.asarray(R)
+    if not jnp.issubdtype(R.dtype, jnp.floating):
+        R = R.astype(jnp.float64)
+
+    chex.assert_axis_dimension(R, axis=-2, expected=3)
+    chex.assert_axis_dimension(R, axis=-1, expected=3)
+
+    trace = jnp.einsum("...ii", R)[..., jnp.newaxis, jnp.newaxis]
+    skew = jnp.stack(
         (
             R[..., 2, 1] - R[..., 1, 2],
             R[..., 0, 2] - R[..., 2, 0],
             R[..., 1, 0] - R[..., 0, 1],
         ),
         axis=-1,
+    )[..., jnp.newaxis, :]
+    sym = R + jnp.swapaxes(R, -1, -2) - (trace - 1.0) * jnp.eye(3, dtype=R.dtype)
+    K = jnp.concatenate(
+        (
+            jnp.concatenate((1.0 + trace, skew), axis=-1),
+            jnp.concatenate((jnp.swapaxes(skew, -1, -2), sym), axis=-1),
+        ),
+        axis=-2,
     )
-
-    # Determine the angle with atan2 from sin(angle) (skew part) and
-    # cos(angle) (trace). arccos of the trace alone loses precision near 0
-    # and pi: for small angles the trace rounds to 3, while the skew part
-    # still carries the angle with full relative precision.
-    traces = jnp.einsum("...ii", R)
-    # clip to [-1, 1]: floating-point error can push the cosine slightly
-    # outside the valid range (e.g. trace just below -1 for a rotation by pi)
-    cos_angle = jnp.clip(0.5 * (traces - 1.0), -1.0, 1.0)
-    sin_angle = 0.5 * differentiable_norm(axis_unnormalized, axis=-1)
-    angle = jnp.arctan2(sin_angle, cos_angle)
-
-    # Special case: angle close to pi. Here R is (numerically) symmetric, so
-    # the skew part R - R^T is zero and its sign cannot recover a general axis.
-    # From Rodrigues' formula, R = 2 ee^T - I at pi, i.e. ee^T = 0.5 * (R + I),
-    # whose diagonal holds the squared axis components e_i**2. We read the
-    # magnitudes |e_i| off that diagonal and the relative signs off the
-    # dominant row k = argmax(e_i**2) of the symmetric part, where
-    # sign(R_sym[k, j]) = sign(e_k) * sign(e_j). Using the symmetric part (not
-    # R) keeps this accurate just below pi, where the skew part then fixes the
-    # overall sign of the axis.
-    R_sym = 0.5 * (R + jnp.swapaxes(R, -1, -2))
-    eeT_diag = jnp.clip(0.5 * (jnp.einsum("...ii->...i", R_sym) + 1.0), 0.0, 1.0)
-    dominant = jax.nn.one_hot(jnp.argmax(eeT_diag, axis=-1), 3, dtype=R.dtype)
-    dominant_row = jnp.einsum("...i,...ij->...j", dominant, R_sym)
-    # fix the dominant component positive (its diagonal sign is unreliable)
-    signs = jnp.where(dominant > 0.0, 1.0, jnp.sign(dominant_row))
-    axis_close_to_pi = jnp.sqrt(eeT_diag) * signs
-    # just below pi the skew part still carries the correct overall sign
-    flip = (angle < jnp.pi) & (
-        jnp.sum(axis_close_to_pi * axis_unnormalized, axis=-1) < 0.0
-    )
-    axis_close_to_pi = jnp.where(
-        flip[..., jnp.newaxis], -axis_close_to_pi, axis_close_to_pi
-    )
-    # Near pi the skew part is only 2 * sin(angle), so the axis read off it
-    # is dominated by rounding errors; use the symmetric solution instead.
-    pi_threshold = 1e-6
-    angle_close_to_pi = jnp.abs(angle - jnp.pi) < pi_threshold
-    axis_unnormalized = jnp.where(
-        angle_close_to_pi[..., jnp.newaxis], axis_close_to_pi, axis_unnormalized
-    )
-    axis = norm_vector(axis_unnormalized)
-
-    return axis * angle[..., jnp.newaxis]
+    column = jnp.argmax(jnp.einsum("...ii->...i", K), axis=-1)
+    q = jnp.take_along_axis(K, column[..., jnp.newaxis, jnp.newaxis], axis=-2)
+    return norm_vector(q[..., 0, :])

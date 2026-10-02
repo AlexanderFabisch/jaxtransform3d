@@ -3,7 +3,14 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import cross_product_matrix, differentiable_norm
+from ..utils import (
+    COSC_SERIES,
+    SINC_SERIES,
+    cross_product_matrix,
+    differentiable_norm,
+    matmul,
+    series_or_closed_form,
+)
 
 
 def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.Array:
@@ -78,32 +85,22 @@ def matrix_from_compact_axis_angle(axis_angle: ArrayLike | None = None) -> jax.A
     if not jnp.issubdtype(axis_angle.dtype, jnp.floating):
         axis_angle = axis_angle.astype(jnp.float64)
 
-    angle = differentiable_norm(axis_angle, axis=-1)
-
     chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
-    chex.assert_equal_shape_prefix((axis_angle, angle), prefix_len=axis_angle.ndim - 1)
 
-    valid_angle = angle > 0.0
-    angle_safe = jnp.where(valid_angle, angle, 1.0)
-    factor1 = jnp.sin(angle) / angle_safe
-    angle_p2 = angle * angle
-    angle_p2_safe = jnp.where(valid_angle, angle_p2, 1.0)
-    factor2 = (1.0 - jnp.cos(angle)) / angle_p2_safe
-
-    angle_p4 = angle_p2 * angle_p2
-    factor1_taylor = 1.0 - angle_p2 / 6.0 + angle_p4 / 120.0  # + O(angle**6)
-    factor2_taylor = 0.5 - angle_p2 / 24.0 + angle_p4 / 720.0  # + O(angle**6)
-
-    factor1 = jnp.where(angle < 1e-3, factor1_taylor, factor1)
-    factor2 = jnp.where(angle < 1e-3, factor2_taylor, factor2)
+    # sin(angle) / angle
+    factor1 = series_or_closed_form(axis_angle, lambda t: jnp.sin(t) / t, SINC_SERIES)
+    # (1 - cos(angle)) / angle ** 2
+    factor2 = series_or_closed_form(
+        axis_angle, lambda t: (1.0 - jnp.cos(t)) / t**2, COSC_SERIES
+    )
 
     omega_matrix = cross_product_matrix(axis_angle)
-    eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
+    eye = jnp.broadcast_to(jnp.eye(3, dtype=omega_matrix.dtype), omega_matrix.shape)
 
     return (
         eye
         + factor1[..., jnp.newaxis, jnp.newaxis] * omega_matrix
-        + factor2[..., jnp.newaxis, jnp.newaxis] * omega_matrix @ omega_matrix
+        + factor2[..., jnp.newaxis, jnp.newaxis] * matmul(omega_matrix, omega_matrix)
     )
 
 
@@ -161,19 +158,16 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
            [ 0.9892...,  0.0764..., -0.0617...,  0.1080...]], ...)
     """
     axis_angle = jnp.asarray(axis_angle)
+    if not jnp.issubdtype(axis_angle.dtype, jnp.floating):
+        axis_angle = axis_angle.astype(jnp.float64)
 
     chex.assert_axis_dimension(axis_angle, axis=-1, expected=3)
 
-    angle = differentiable_norm(axis_angle, axis=-1)
-    angle_safe = jnp.where(angle == 0, 1.0, angle)
-    half_angle = 0.5 * angle
-
-    axis_scale = jnp.sin(half_angle) / angle_safe
-    # small angle Taylor series expansion based on
-    # https://github.com/scipy/scipy/blob/ae25ba2385e62d5372a47ed59f9cfddc5ab3dc6a/scipy/spatial/transform/_rotation.pyx#L1300
-    angle_p2 = angle * angle
-    axis_scale_taylor = 0.5 - angle_p2 / 48.0 + angle_p2 * angle_p2 / 3840.0
-    axis_scale = jnp.where(angle < 1e-3, axis_scale_taylor, axis_scale)
+    half_angle = 0.5 * differentiable_norm(axis_angle, axis=-1)
+    # sin(angle / 2) / angle
+    axis_scale = 0.5 * series_or_closed_form(
+        0.5 * axis_angle, lambda t: jnp.sin(t) / t, SINC_SERIES
+    )
 
     real = jnp.cos(half_angle)[..., jnp.newaxis]
     vec = axis_scale[..., jnp.newaxis] * axis_angle
@@ -184,13 +178,15 @@ def quaternion_from_compact_axis_angle(axis_angle: ArrayLike) -> jax.Array:
 def assert_compact_axis_angle_equal(a1, a2, *args, **kwargs):
     from numpy.testing import assert_array_almost_equal
 
+    a1 = jnp.asarray(a1)
+    a2 = jnp.asarray(a2)
     angle1 = jnp.linalg.norm(a1)
     angle2 = jnp.linalg.norm(a2)
-    # required despite normalization in case of 180 degree rotation
+    # rotations by pi about e and -e are the same
     if (
-        abs(angle1) - jnp.pi < 1e-2
-        and abs(angle2) - jnp.pi < 1e-2
-        and jnp.any(jnp.sign(a1) != jnp.sign(a2))
+        abs(angle1 - jnp.pi) < 1e-2
+        and abs(angle2 - jnp.pi) < 1e-2
+        and jnp.linalg.norm(a1 + a2) < jnp.linalg.norm(a1 - a2)
     ):
         a1 = -a1
     assert_array_almost_equal(a1, a2, *args, **kwargs)

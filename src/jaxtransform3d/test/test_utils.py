@@ -58,6 +58,9 @@ def test_differentiable_norm_extreme_magnitudes(dtype, scale, rtol):
     direction = np.array([4.0, -2.0, 1.0])
     with enable_x64(dtype == "float64"):
         vec = jnp.asarray(scale * direction, dtype=dtype)
+        if jnp.max(jnp.abs(vec)) == 0.0:
+            # e.g., XLA on CPUs flushes subnormal numbers to 0 in reductions
+            pytest.skip("platform does not support subnormal numbers")
         norm, grad = jax.value_and_grad(ju.differentiable_norm)(vec)
         jac_fwd = jax.jacfwd(ju.differentiable_norm)(vec)
     assert_allclose(norm, scale * np.sqrt(21.0), rtol=rtol)

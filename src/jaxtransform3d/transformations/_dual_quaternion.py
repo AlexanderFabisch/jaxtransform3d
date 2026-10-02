@@ -9,6 +9,7 @@ from ..rotations import (
     left_jacobian_SO3_inv,
     quaternion_conjugate,
 )
+from ..utils import differentiable_norm, matmul
 
 
 def norm_dual_quaternion(dual_quat):
@@ -59,7 +60,7 @@ def norm_dual_quaternion(dual_quat):
     dual = dual_quat[..., 4:]
 
     # 1. ensure valid real quaternion
-    real_norm = jnp.linalg.norm(real, axis=-1)[..., jnp.newaxis]
+    real_norm = differentiable_norm(real, axis=-1)[..., jnp.newaxis]
     invalid_real = real_norm == 0.0
     identity = jnp.array([1.0, 0.0, 0.0, 0.0], dtype=dual_quat.dtype)
     real = jnp.where(invalid_real, identity, real)
@@ -223,8 +224,8 @@ def apply_dual_quaternion(dual_quat: ArrayLike, v: ArrayLike) -> jax.Array:
 
     pure_dual_quat = jnp.concatenate(
         (
-            jnp.ones(v.shape[:-1] + (1,)),
-            jnp.zeros(v.shape[:-1] + (4,)),
+            jnp.ones(v.shape[:-1] + (1,), dtype=v.dtype),
+            jnp.zeros(v.shape[:-1] + (4,), dtype=v.dtype),
             v,
         ),
         axis=-1,
@@ -274,6 +275,6 @@ def exponential_coordinates_from_dual_quaternion(dual_quat: ArrayLike) -> jax.Ar
     axis_angle = compact_axis_angle_from_quaternion(real)
 
     t = 2.0 * compose_quaternions(dual, quaternion_conjugate(real))[..., 1:]
-    v_theta = (left_jacobian_SO3_inv(axis_angle) @ t[..., jnp.newaxis])[..., 0]
+    v_theta = matmul(left_jacobian_SO3_inv(axis_angle), t[..., jnp.newaxis])[..., 0]
 
     return jnp.concatenate((axis_angle, v_theta), axis=-1)
