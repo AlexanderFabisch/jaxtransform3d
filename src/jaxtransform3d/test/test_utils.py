@@ -2,7 +2,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from numpy.testing import assert_array_almost_equal
+from jax.experimental import enable_x64
+from numpy.testing import assert_allclose, assert_array_almost_equal
 
 import jaxtransform3d.utils as ju
 
@@ -39,6 +40,43 @@ def test_differentiable_norm():
     norm_grad = jax.grad(ju.differentiable_norm, argnums=0)
     assert jnp.isfinite(norm_grad(jnp.zeros(3), axis=0)).all()
     assert jnp.isfinite(norm_grad(1e-25 * jnp.ones(3), axis=0)).all()
+
+
+@pytest.mark.parametrize(
+    "dtype, scale, rtol",
+    [
+        ("float32", 1e-40, 1e-5),  # subnormal components
+        ("float32", 1e-30, 1e-6),  # squared norm underflows
+        ("float32", 1.0, 1e-6),
+        ("float32", 1e30, 1e-6),  # squared norm overflows
+        ("float64", 1e-310, 1e-10),  # subnormal components
+        ("float64", 1e-200, 1e-15),
+        ("float64", 1e200, 1e-15),
+    ],
+)
+def test_differentiable_norm_extreme_magnitudes(dtype, scale, rtol):
+    direction = np.array([4.0, -2.0, 1.0])
+    with enable_x64(dtype == "float64"):
+        vec = jnp.asarray(scale * direction, dtype=dtype)
+        norm, grad = jax.value_and_grad(ju.differentiable_norm)(vec)
+        jac_fwd = jax.jacfwd(ju.differentiable_norm)(vec)
+    assert_allclose(norm, scale * np.sqrt(21.0), rtol=rtol)
+    assert_allclose(grad, direction / np.sqrt(21.0), rtol=rtol)
+    assert_allclose(jac_fwd, grad, rtol=rtol)
+
+
+def test_differentiable_norm_axes():
+    rng = np.random.default_rng(2324)
+    vec = jnp.asarray(rng.standard_normal(size=(2, 5, 3)))
+    for axis in [None, 0, 1, -1]:
+        assert_array_almost_equal(
+            ju.differentiable_norm(vec, axis=axis), jnp.linalg.norm(vec, axis=axis)
+        )
+    grad = jax.grad(lambda v: ju.differentiable_norm(v, axis=-1).sum())(vec)
+    assert_array_almost_equal(grad, vec / jnp.linalg.norm(vec, axis=-1)[..., None])
+
+    jac_rev = jax.jacrev(ju.differentiable_norm)(jnp.zeros(3))
+    assert_array_almost_equal(jac_rev, np.zeros(3))
 
 
 def test_norm_vectors_0dim():

@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-from ..utils import differentiable_norm, norm_angle, norm_vector
+from ..utils import differentiable_norm, norm_vector
 
 
 def norm_quaternion(q: ArrayLike) -> jax.Array:
@@ -262,16 +262,29 @@ def compact_axis_angle_from_quaternion(q: ArrayLike) -> jax.Array:
 
     chex.assert_axis_dimension(q, axis=-1, expected=4)
 
-    real = q[..., 0]
-    vec = q[..., 1:]
+    # q and -q represent the same rotation. With a nonnegative real part, the
+    # angle is in [0, pi].
+    sign = jnp.where(q[..., 0] < 0.0, -1.0, 1.0)
+    real = sign * q[..., 0]
+    vec = sign[..., jnp.newaxis] * q[..., 1:]
     vec_norm = differentiable_norm(vec, axis=-1)
 
-    # atan2 uses both sin(angle / 2) and cos(angle / 2) and, in contrast to
-    # arccos of the real part, retains precision near 0 and pi.
-    angle = norm_angle(2.0 * jnp.arctan2(vec_norm, real))
+    # We compute vec * angle / vec_norm instead of normalizing vec, so that
+    # we do not divide by vec_norm near the identity. atan2 uses both
+    # sin(angle / 2) and cos(angle / 2) and, in contrast to arccos of the real
+    # part, retains precision near 0 and pi.
+    # For x = vec_norm / real < eps ** 0.25, we use the Taylor series
+    # angle / vec_norm = 2 * atan(x) / (x * real)
+    #                  = 2 / real * (1 - x ** 2 / 3 + x ** 4 / 5 - ...).
+    # The first omitted term is below eps. In contrast to the closed form,
+    # its derivative does not lose precision for small x and it is
+    # differentiable at x = 0.
+    use_series = vec_norm < jnp.finfo(q.dtype).eps ** 0.25 * real
+    real_safe = jnp.where(use_series, real, 1.0)
+    x2 = (vec_norm / real_safe) ** 2
+    factor_series = 2.0 / real_safe * (1.0 - x2 * (1.0 / 3.0 - x2 / 5.0))
+    vec_norm_safe = jnp.where(use_series | (vec_norm == 0.0), 1.0, vec_norm)
+    factor_closed = 2.0 * jnp.arctan2(vec_norm, real) / vec_norm_safe
+    factor = jnp.where(use_series, factor_series, factor_closed)
 
-    axis = norm_vector(vec, norm=vec_norm)
-    axis_angle = axis * angle[..., jnp.newaxis]
-
-    angle_nonzero = (vec_norm > 0.0)[..., jnp.newaxis]
-    return jnp.where(angle_nonzero, axis_angle, 0.0)
+    return vec * factor[..., jnp.newaxis]

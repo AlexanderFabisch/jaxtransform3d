@@ -145,8 +145,37 @@ def test_compact_axis_angle_from_quaternion_negative_real():
         pr.assert_quaternion_equal(q[i], q2[i], decimal=5)
 
 
-def test_compact_axis_angle_from_quaternion_gradient_at_identity():
-    jac = jax.jacfwd(jr.compact_axis_angle_from_quaternion)(
-        jnp.array([1.0, 0.0, 0.0, 0.0])
-    )
-    assert np.isfinite(np.asarray(jac)).all()
+@pytest.mark.parametrize("scale", [0.0, 1e-40, 1e-30, 1e-22, 1e-12])
+def test_compact_axis_angle_from_quaternion_gradient_at_identity(scale):
+    # The derivative of the log map at the identity is 2 * I with respect to
+    # the vector part and 0 with respect to the real part.
+    q = jnp.array([1.0, 4.0 * scale, -2.0 * scale, scale], dtype=jnp.float32)
+    jac_fwd = jax.jacfwd(jr.compact_axis_angle_from_quaternion)(q)
+    jac_rev = jax.jacrev(jr.compact_axis_angle_from_quaternion)(q)
+    assert_allclose(jac_fwd[:, 1:], 2.0 * np.eye(3), rtol=1e-6, atol=1e-6)
+    assert_allclose(jac_fwd[:, 0], np.zeros(3), atol=1e-6)
+    assert_allclose(jac_rev, jac_fwd, rtol=1e-6)
+
+
+@pytest.mark.parametrize(
+    "angle", [1e-6, 2.4e-4, 2.5e-4, 1e-3, 0.5, 2.0, 3.0, np.pi - 1e-4]
+)
+@pytest.mark.parametrize("sign", [1.0, -1.0])
+def test_compact_axis_angle_from_quaternion_jacobian(angle, sign):
+    # angles around 2.44e-4 are on both sides of the series threshold
+    axis = np.array([1.0, 2.0, -2.0]) / 3.0
+    q = sign * np.r_[np.cos(0.5 * angle), np.sin(0.5 * angle) * axis]
+    with enable_x64():
+        jac = jax.jacfwd(jr.compact_axis_angle_from_quaternion)(jnp.asarray(q))
+        h = 1e-7
+        jac_num = np.column_stack(
+            [
+                (
+                    jr.compact_axis_angle_from_quaternion(q + h * e)
+                    - jr.compact_axis_angle_from_quaternion(q - h * e)
+                )
+                / (2.0 * h)
+                for e in np.eye(4)
+            ]
+        )
+    assert_allclose(jac, jac_num, rtol=1e-6, atol=1e-6)

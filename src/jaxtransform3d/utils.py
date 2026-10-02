@@ -1,5 +1,7 @@
 """Utility functions."""
 
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
@@ -7,14 +9,20 @@ from jax.typing import ArrayLike
 two_pi = 2.0 * jnp.pi
 
 
+@partial(jax.custom_jvp, nondiff_argnums=(1,))
 def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
     """Differentiable Euclidean norm.
 
-    The derivative of sqrt(x) is 1 / (2 * sqrt(x)), so it is inf at x == 0 and
-    might exceed the representable range of numbers by the floating point type
-    when x is close to 0 as the derivative might become very large. So we ensure
-    that the squared norm does not become too small by clipping it at
-    `jnp.finfo(x.dtype).smallest_subnormal` before computing its square root.
+    We divide x by its largest absolute component s before squaring it and
+    compute the norm as s * norm(x / s). Hence, the squared norm cannot
+    underflow or overflow, which would happen in float32 for components below
+    about 1e-19 or above about 1e19.
+
+    The gradient of the norm is the unit vector x / norm(x) = u / norm(u) with
+    u = x / s. We implement it directly so that the gradient neither divides
+    by the possibly tiny norm nor by s. The derivative of sqrt(x) is
+    1 / (2 * sqrt(x)), which is inf at x == 0. The gradient of the norm is not
+    defined at 0. We return 0 instead.
 
     Parameters
     ----------
@@ -29,12 +37,34 @@ def differentiable_norm(x: jnp.ndarray, axis: int | None = None) -> jnp.ndarray:
     x_norm : array, shape (...,)
         Norm of x along given axis.
     """
-    squared_norm = (x * x).sum(axis=axis)
-    is_zero = jnp.isclose(
-        squared_norm, 0.0, rtol=0.0, atol=jnp.finfo(x.dtype).smallest_subnormal
+    scale, nonzero, scaled_norm, _ = _scaled_norm(x, axis)
+    return jnp.squeeze(jnp.where(nonzero, scale * scaled_norm, 0.0), axis=axis)
+
+
+@differentiable_norm.defjvp
+def differentiable_norm_jvp(axis, primal, tangent):
+    (x,) = primal
+    (x_dot,) = tangent
+    scale, nonzero, scaled_norm, scaled = _scaled_norm(x, axis)
+    primal_out = jnp.squeeze(jnp.where(nonzero, scale * scaled_norm, 0.0), axis=axis)
+    unit = jnp.where(nonzero, scaled / scaled_norm, 0.0)
+    tangent_out = (unit * x_dot).sum(axis=axis)
+    return primal_out, tangent_out
+
+
+def _scaled_norm(x, axis):
+    # The norm is positively homogeneous and the unit vector is scale
+    # invariant, so derivatives of both do not depend on the scale.
+    scale = jax.lax.stop_gradient(jnp.max(jnp.abs(x), axis=axis, keepdims=True))
+    nonzero = scale > 0.0
+    scale = jnp.where(nonzero, scale, 1.0)
+    scaled = x / scale
+    # The largest component of scaled is 1 if x is not 0, so the squared norm
+    # is in [1, n]. Otherwise, we avoid the square root at 0.
+    squared_norm = jnp.where(nonzero, scaled * scaled, 1.0).sum(
+        axis=axis, keepdims=True
     )
-    norm = jnp.sqrt(jnp.maximum(squared_norm, jnp.finfo(x.dtype).smallest_subnormal))
-    return jnp.where(is_zero, 0.0, norm)
+    return scale, nonzero, jnp.sqrt(squared_norm), scaled
 
 
 @jax.custom_jvp
