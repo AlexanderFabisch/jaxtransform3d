@@ -153,8 +153,8 @@ def product_of_exponentials(ee2base_home, screw_axes_home, joint_limits, thetas)
 
     T = jnp.eye(4)
     for joint_displacement in joint_displacements:
-        T = T @ joint_displacement
-    T = T @ ee2base_home
+        T = jt.compose_transforms(T, joint_displacement)
+    T = jt.compose_transforms(T, ee2base_home)
 
     return jt.exponential_coordinates_from_transform(T)
 
