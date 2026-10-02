@@ -48,7 +48,10 @@ def left_jacobian_SO3(axis_angle: jnp.ndarray) -> jnp.ndarray:
     omega_matrix = cross_product_matrix(omega_unit)
 
     eye = jnp.broadcast_to(jnp.eye(3), omega_matrix.shape)
-    factor1 = (1.0 - jnp.cos(theta_safe)) / theta_safe
+    # This is (1 - cos(theta)) / theta. The half-angle identity
+    # 1 - cos(theta) = 2 * sin(theta / 2) ** 2 avoids subtracting two values
+    # close to 1, which would cause a relative error of about eps / theta ** 2.
+    factor1 = 2.0 * jnp.sin(0.5 * theta_safe) ** 2 / theta_safe
     factor2 = 1.0 - jnp.sin(theta_safe) / theta_safe
     J = (
         eye
