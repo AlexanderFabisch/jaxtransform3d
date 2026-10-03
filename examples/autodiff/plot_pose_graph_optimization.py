@@ -261,9 +261,13 @@ for iteration in range(1, 21):
 # -------------
 # The dataset does not contain a map of the garage, but the robot drives on
 # its decks. Hence, we can estimate the decks from the optimized trajectory:
-# we remove the common slope of the garage, separate the four decks at gaps
-# in the remaining heights, and fit a plane to the positions on each deck. The
-# footprint of the decks is the convex hull of all positions in the garage.
+# we remove the common slope of the garage and separate the four decks at gaps
+# in the remaining heights. Then, we fit parallel planes
+# :math:`z = a x + b y + c_k` to the positions with a common slope
+# :math:`(a, b)` and an offset :math:`c_k` for each deck :math:`k`. We ignore
+# positions on the ramps between the decks, which are far from these planes.
+# The footprint of the decks is the convex hull of all positions in the
+# garage.
 P_init = np.asarray(poses_init[:, :3, 3])
 P_opt = np.asarray(poses[:, :3, 3])
 
@@ -272,14 +276,20 @@ P_garage = P_opt[in_garage]
 A = np.c_[P_garage[:, :2], np.ones(len(P_garage))]
 heights = P_garage[:, 2] - A @ np.linalg.lstsq(A, P_garage[:, 2], rcond=None)[0]
 deck_indices = np.digitize(heights, [-3.4, -0.5, 2.7])
+
+# design matrix with the common slope and one offset per deck
+A = np.c_[P_garage[:, :2], np.eye(4)[deck_indices]]
+on_deck = np.ones(len(P_garage), dtype=bool)
+for _ in range(2):  # the second fit ignores positions on the ramps
+    planes = np.linalg.lstsq(A[on_deck], P_garage[on_deck, 2], rcond=None)[0]
+    on_deck = np.abs(P_garage[:, 2] - A @ planes) < 0.5
+slope, offsets = planes[:2], planes[2:]
+
 footprint = P_garage[ConvexHull(P_garage[:, :2]).vertices, :2]
 footprint = footprint.mean(axis=0) + 1.06 * (footprint - footprint.mean(axis=0))
-decks = []
-for deck in range(4):
-    on_deck = deck_indices == deck
-    plane = np.linalg.lstsq(A[on_deck], P_garage[on_deck, 2], rcond=None)[0]
-    deck_heights = np.c_[footprint, np.ones(len(footprint))] @ plane - 0.15
-    decks.append(np.c_[footprint, deck_heights])
+decks = [np.c_[footprint, footprint @ slope + offset - 0.15] for offset in offsets]
+print(f"slope of the decks: {np.degrees(np.arctan(np.linalg.norm(slope))):.2f} deg")
+print(f"distance between decks: {np.round(np.diff(offsets), 2)} m")
 
 # %%
 # Results
