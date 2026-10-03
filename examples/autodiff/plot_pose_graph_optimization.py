@@ -397,25 +397,12 @@ fig.update_layout(
 fig.show()
 
 # %%
-# In the side view, the decks of the initial guess appear as wide bands. After
-# the optimization, they are planar and parallel. The optimization converges
-# in a few iterations.
-fig, (ax_side, ax_cost) = plt.subplots(
-    1, 2, figsize=(14, 4.5), width_ratios=(3, 1), layout="constrained"
-)
-ax_side.plot(P_init[:, 1], P_init[:, 2], lw=0.7, c="tab:red", label="Initial guess")
-ax_side.plot(P_opt[:, 1], P_opt[:, 2], lw=0.7, c="tab:blue", label="Optimized")
-ax_side.set_xlim(120.0, 260.0)
-ax_side.set_xlabel("y [m]")
-ax_side.set_ylabel("z [m]")
-ax_side.set_title("Side view of the parking decks")
-ax_side.legend(loc="upper right")
-ax_side.grid(alpha=0.3)
-
-ax_cost.semilogy(costs, marker="o", c="k")
-ax_cost.set_xticks(range(len(costs)))
-ax_cost.set_xlabel("Accepted iteration")
-ax_cost.set_ylabel("Cost $E$")
-ax_cost.set_title("Convergence")
-ax_cost.grid(alpha=0.3, which="both")
+# The optimization converges in a few iterations.
+plt.figure(figsize=(5, 3.5), layout="constrained")
+plt.semilogy(costs, marker="o", c="k")
+plt.xticks(range(len(costs)))
+plt.xlabel("Accepted iteration")
+plt.ylabel("Cost $E$")
+plt.title("Convergence of Levenberg-Marquardt")
+plt.grid(alpha=0.3, which="both")
 plt.show()
