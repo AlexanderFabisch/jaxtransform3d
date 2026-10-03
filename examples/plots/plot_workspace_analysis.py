@@ -307,9 +307,9 @@ def pose_errors(ee2base_home, screw_axes_home, target, thetas):
 # The functions above handle a single target and a single configuration. We
 # use ``jax.vmap`` twice: once over random restarts (initial joint angles)
 # and once over targets. ``jax.lax.scan`` runs the iterations. In each
-# iteration we also record the fraction of targets that is already solved
-# so that we can see how fast the solver converges. ``jax.jit`` compiles
-# everything into one GPU program.
+# iteration we also record which targets are already solved by at least one
+# restart so that we can see how fast the solver converges. ``jax.jit``
+# compiles everything into one GPU program.
 def solve_batch(
     ee2base_home,
     screw_axes_home,
@@ -332,18 +332,14 @@ def solve_batch(
 
     Returns
     -------
-    thetas : array, shape (n_targets, n_joints)
-        Best solution per target.
+    thetas : array, shape (n_targets, n_restarts, n_joints)
+        Solutions of all restarts.
 
-    position_error : array, shape (n_targets,)
-        Position error of best solution.
+    solved : array, shape (n_targets, n_restarts)
+        Restarts that reached the target within the tolerances.
 
-    rotation_error : array, shape (n_targets,)
-        Rotation error of best solution.
-
-    success_rate : array, shape (n_iter,)
-        Fraction of targets solved by at least one restart after each
-        iteration.
+    solved_per_iteration : array, shape (n_iter, n_targets)
+        Targets solved by at least one restart after each iteration.
     """
     step = partial(ik_step, ee2base_home, screw_axes_home, joint_limits)
     errors = partial(pose_errors, ee2base_home, screw_axes_home)
@@ -359,21 +355,10 @@ def solve_batch(
 
     def body(thetas, _):
         thetas = step_all(targets, thetas)
-        return thetas, jnp.mean(jnp.any(is_solved(thetas), axis=1))
+        return thetas, jnp.any(is_solved(thetas), axis=1)
 
-    thetas, success_rate = jax.lax.scan(body, initial_thetas, length=n_iter)
-
-    position_error, rotation_error = errors_all(targets, thetas)
-    # select the restart with the smallest (scaled) pose error
-    best = jnp.argmin(position_error + 0.1 * rotation_error, axis=1)
-    take = partial(jnp.take_along_axis, indices=best[:, jnp.newaxis], axis=1)
-    thetas = jnp.take_along_axis(thetas, best[:, jnp.newaxis, jnp.newaxis], axis=1)
-    return (
-        thetas[:, 0],
-        take(position_error)[:, 0],
-        take(rotation_error)[:, 0],
-        success_rate,
-    )
+    thetas, solved_per_iteration = jax.lax.scan(body, initial_thetas, length=n_iter)
+    return thetas, is_solved(thetas), solved_per_iteration
 
 
 # %%
@@ -461,8 +446,11 @@ targets = jnp.asarray(targets)
 
 # %%
 # For each target, we sample initial joint angles uniformly within the joint
-# limits, or within :math:`[-\pi, \pi]` for unbounded joints.
-n_restarts = 6
+# limits, or within :math:`[-\pi, \pi]` for unbounded joints. We use 12
+# restarts per target. To limit the memory on the GPU, we solve them in two
+# batches of 6 restarts.
+n_restarts = 12
+n_batches = 2
 lower = jnp.maximum(joint_limits[:, 0], -jnp.pi)
 upper = jnp.minimum(joint_limits[:, 1], jnp.pi)
 key = jax.random.PRNGKey(0)
@@ -477,6 +465,7 @@ initial_thetas = jax.random.uniform(
 # function. A target is reachable if the position error is below 1 mm and
 # the orientation error is below 0.01 rad (about 0.6 degrees).
 n_iter = 40
+batches = jnp.split(initial_thetas, n_batches, axis=1)
 solve = jax.jit(
     partial(
         solve_batch,
@@ -488,15 +477,20 @@ solve = jax.jit(
         rotation_tolerance=1e-2,
     )
 )
-solve = solve.lower(targets, initial_thetas).compile()
+solve = solve.lower(targets, batches[0]).compile()
 
 start = time.perf_counter()
-thetas, position_error, rotation_error, success_rate = jax.block_until_ready(
-    solve(targets, initial_thetas)
-)
+results = [jax.block_until_ready(solve(targets, batch)) for batch in batches]
 runtime = time.perf_counter() - start
+all_thetas = jnp.concatenate([thetas for thetas, _, _ in results], axis=1)
+solved = np.concatenate([np.asarray(solved) for _, solved, _ in results], axis=1)
+solved_per_iteration = np.any(
+    [np.asarray(solved_per_iteration) for _, _, solved_per_iteration in results],
+    axis=0,
+)
+success_rate = solved_per_iteration.mean(axis=1)
 
-reachable = np.asarray((position_error < 1e-3) & (rotation_error < 1e-2))
+reachable = solved.any(axis=1)
 n_solves = len(targets) * n_restarts
 print(f"Device: {jax.devices()[0]}")
 print(f"Targets: {len(targets)}, restarts per target: {n_restarts}")
@@ -507,10 +501,19 @@ print(f"Reachable: {reachable.sum()} ({100 * reachable.mean():.1f} %)")
 # %%
 # Compute Manipulability
 # ----------------------
+# The robot can often reach a target with different configurations, e.g.,
+# with the elbow up or down. Different restarts converge to different
+# configurations. For each target, we select the solution with the highest
+# manipulability among all restarts that reach the target.
 manipulability_all = jax.jit(
-    jax.vmap(partial(manipulability, ee2base_home, screw_axes_home))
+    jax.vmap(jax.vmap(partial(manipulability, ee2base_home, screw_axes_home)))
 )
-w = np.asarray(manipulability_all(thetas))
+w_all = np.where(solved, np.asarray(manipulability_all(all_thetas)), -1.0)
+best = np.argmax(w_all, axis=1)
+thetas = np.take_along_axis(
+    np.asarray(all_thetas), best[:, np.newaxis, np.newaxis], axis=1
+)[:, 0]
+w = np.take_along_axis(w_all, best[:, np.newaxis], axis=1)[:, 0]
 w_reachable = w[reachable]
 print(f"Manipulability: min {w_reachable.min():.4f}, max {w_reachable.max():.4f}")
 
@@ -526,9 +529,11 @@ print(f"Manipulability: min {w_reachable.min():.4f}, max {w_reachable.max():.4f}
 # workspace extends below the mounting plane of the robot.
 #
 # The workspace is roughly a sphere around the second joint. Manipulability is
-# low close to the vertical axis through the base and highest at the sides of
-# the workspace. A few isolated unreachable cells inside the workspace are
-# failures of the local IK solver, which could be fixed with more restarts.
+# low close to the vertical axis through the base, where the robot is close to
+# singular configurations, and it is highest at the sides of the workspace. A
+# few isolated cells are unreachable or have a low manipulability, because
+# none of the restarts converged to a (good) solution. More restarts would fix
+# this.
 W = np.where(reachable, w, np.nan).reshape(n_x, n_y, n_z)
 G = grid.reshape(n_x, n_y, n_z, 3)
 slice_index = n_y // 2
