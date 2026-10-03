@@ -26,9 +26,8 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-import pytransform3d.plot_utils as ppu
+import plotly.graph_objects as go
 from matplotlib.collections import PolyCollection
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 import jaxtransform3d.rotations as jr
 import jaxtransform3d.transformations as jt
@@ -502,60 +501,135 @@ for name, T, clearance_profile in [
 # %%
 # Plotting
 # --------
-# The 3D plot shows the building, both trajectories, and the robot at a few
-# poses along the optimized trajectory. Colors indicate time, from purple
-# (start) to yellow (goal). The top views show the walls of the upper and the
-# lower floor, the keyframes (gray dots), and poses of the initial trajectory
-# that collide with the building (red crosses). The optimized trajectory goes
-# around the corners and passes through the doors. On the right side, we see
-# that the speed profiles of the optimized trajectory do not have
-# discontinuities and that it keeps a positive clearance. Note that we do not
-# minimize speeds but accelerations, so the speed is not constant.
+# The interactive 3D view shows the building, both trajectories, and the robot
+# at a few poses along the optimized trajectory. Colors indicate time. Red
+# markers show poses of the initial trajectory that collide with the building.
+# You can hide elements by clicking on the legend.
+times_text = [f"{t:.1f}" for t in times]
+snapshot_indices = np.linspace(0, n_steps - 1, 12).astype(int)
+
+
+def robot_triangles_at(T):
+    return np.asarray(jax.vmap(jt.apply_transform, (None, 0))(T, robot_triangles))
+
+
+def mesh3d(triangles, **kwargs):
+    vertices = triangles.reshape(-1, 3)
+    i, j, k = np.arange(len(vertices)).reshape(-1, 3).T
+    return go.Mesh3d(
+        x=vertices[:, 0], y=vertices[:, 1], z=vertices[:, 2], i=i, j=j, k=k, **kwargs
+    )
+
+
+def color_at(time):
+    r, g, b, _ = plt.cm.viridis(time / duration)
+    return f"rgb({int(255 * r)}, {int(255 * g)}, {int(255 * b)})"
+
+
 P_baseline = np.asarray(T_baseline[:, :3, 3])
 P_optimized = np.asarray(T_optimized[:, :3, 3])
-snapshot_indices = np.linspace(0, n_steps - 1, 14).astype(int)
-snapshot_colors = plt.cm.viridis(np.linspace(0.0, 1.0, len(snapshot_indices)))
 collisions = clearance_baseline < 0.0
-
-
-def robot_mesh(T):
-    vertices = jax.vmap(jt.apply_transform, (None, 0))(T, jnp.asarray(robot_triangles))
-    return np.asarray(vertices)
-
-
-fig = plt.figure(figsize=(15, 12))
-gs = fig.add_gridspec(4, 3, width_ratios=(1.0, 1.0, 0.9), wspace=0.25, hspace=0.4)
-
-ax = ppu.make_3d_axis(ax_s=1.0, pos=gs[:2, :2], n_ticks=5)
-ax.add_collection3d(
-    Poly3DCollection(
-        env_triangles, facecolor="0.85", edgecolor="0.4", linewidths=0.2, alpha=0.1
+fig = go.Figure()
+fig.add_trace(
+    mesh3d(
+        env_triangles,
+        color="lightgray",
+        opacity=0.25,
+        flatshading=True,
+        lighting=dict(ambient=0.6, diffuse=0.6, specular=0.1),
+        hoverinfo="skip",
+        name="Building",
+        showlegend=True,
     )
 )
-ax.plot(*P_baseline.T, c="gray", ls="--", lw=1.5, label="Keyframes + ScLERP")
-ax.plot(*P_optimized.T, c="k", lw=2, label="Optimized")
-for i, color in zip(snapshot_indices, snapshot_colors, strict=True):
-    ax.add_collection3d(
-        Poly3DCollection(robot_mesh(T_optimized[i]), facecolor=color, alpha=0.9)
+for k, i in enumerate(snapshot_indices):
+    fig.add_trace(
+        mesh3d(
+            robot_triangles_at(T_optimized[i]),
+            color=color_at(times[i]),
+            flatshading=True,
+            hovertemplate=f"t = {times[i]:.1f} s<extra></extra>",
+            name="Robot",
+            legendgroup="robot",
+            showlegend=k == 0,
+        )
     )
-ax.set_xlim((volume_min[0], volume_max[0]))
-ax.set_ylim((volume_min[1], volume_max[1]))
-ax.set_zlim((volume_min[2], volume_max[2]))
-ax.set_box_aspect(volume_max - volume_min, zoom=1.15)
-ax.view_init(elev=40, azim=-60)
-ax.set_title("Cubicles benchmark (OMPL)")
-ax.legend(loc="upper left")
+fig.add_trace(
+    go.Scatter3d(
+        x=P_baseline[:, 0],
+        y=P_baseline[:, 1],
+        z=P_baseline[:, 2],
+        mode="lines",
+        line=dict(color="gray", width=4, dash="dash"),
+        text=times_text,
+        hovertemplate="t = %{text} s<extra></extra>",
+        name="Keyframes + ScLERP",
+    )
+)
+fig.add_trace(
+    go.Scatter3d(
+        x=P_baseline[collisions, 0],
+        y=P_baseline[collisions, 1],
+        z=P_baseline[collisions, 2],
+        mode="markers",
+        marker=dict(color="red", size=2.5, symbol="x"),
+        hoverinfo="skip",
+        name="Collisions",
+    )
+)
+fig.add_trace(
+    go.Scatter3d(
+        x=P_optimized[:, 0],
+        y=P_optimized[:, 1],
+        z=P_optimized[:, 2],
+        mode="lines",
+        line=dict(
+            color=times,
+            colorscale="Viridis",
+            width=7,
+            colorbar=dict(title="Time [s]", len=0.6),
+        ),
+        text=times_text,
+        hovertemplate="t = %{text} s<extra></extra>",
+        name="Optimized",
+    )
+)
+fig.update_layout(
+    title="OMPL cubicles benchmark",
+    scene=dict(
+        aspectmode="data",
+        xaxis=dict(range=[volume_min[0], volume_max[0]], title="x"),
+        yaxis=dict(range=[volume_min[1], volume_max[1]], title="y"),
+        zaxis=dict(range=[volume_min[2], volume_max[2]], title="z"),
+        camera=dict(eye=dict(x=-1.0, y=-1.45, z=1.25)),
+    ),
+    legend=dict(x=0.01, y=0.95),
+    margin=dict(l=0, r=0, t=40, b=0),
+    height=650,
+)
+fig.show()
 
-# top views: walls are vertical triangles, the upper floor is above z = 0
+# %%
+# The top views show the walls of the upper and the lower floor, the keyframes
+# (gray dots), and the collisions of the initial trajectory (red crosses). The
+# optimized trajectory goes around the corners and passes through the doors.
+# The profiles show that the speeds of the optimized trajectory do not have
+# discontinuities and that it keeps a positive clearance. Note that we do not
+# minimize speeds but accelerations, so the speed is not constant.
+fig = plt.figure(figsize=(15, 9))
+gs = fig.add_gridspec(4, 2, width_ratios=(2.0, 1.0), wspace=0.15, hspace=0.7)
+
+# walls are vertical triangles, the upper floor is above z = 0
 normals = np.cross(
     env_triangles[:, 1] - env_triangles[:, 0], env_triangles[:, 2] - env_triangles[:, 0]
 )
 walls = env_triangles[np.abs(normals[:, 2]) < 1e-3 * np.linalg.norm(normals, axis=1)]
 lower_floor_x_min = walls[walls[:, :, 2].mean(axis=1) < 0.0][:, :, 0].min() - 10.0
-gs_top = gs[2:, :2].subgridspec(
+gs_top = gs[:, 0].subgridspec(
     1,
     2,
     width_ratios=(volume_max[0] - volume_min[0], volume_max[0] - lower_floor_x_min),
+    wspace=0.1,
 )
 for gs_pos, title, upper_floor, x_limits in [
     (gs_top[0], "Upper floor (top view)", True, (volume_min[0], volume_max[0])),
@@ -567,10 +641,14 @@ for gs_pos, title, upper_floor, x_limits in [
         PolyCollection(floor_walls[:, :, :2], edgecolor="0.3", facecolor="none")
     )
     on_floor = (P_optimized[:, 2] > 0.0) == upper_floor
-    for i, color in zip(snapshot_indices, snapshot_colors, strict=True):
+    for i in snapshot_indices:
         if on_floor[i]:
-            robot_footprint = robot_mesh(T_optimized[i])[:, :, :2]
-            ax_top.add_collection(PolyCollection(robot_footprint, color=color))
+            robot_footprint = robot_triangles_at(T_optimized[i])[:, :, :2]
+            ax_top.add_collection(
+                PolyCollection(
+                    robot_footprint, color=plt.cm.viridis(times[i] / duration)
+                )
+            )
     baseline_on_floor = (P_baseline[:, 2] > 0.0) == upper_floor
     P = np.where(baseline_on_floor[:, None], P_baseline, np.nan)
     ax_top.plot(P[:, 0], P[:, 1], c="gray", ls="--")
@@ -588,9 +666,9 @@ for gs_pos, title, upper_floor, x_limits in [
     if upper_floor:
         ax_top.set_ylabel("y")
 
-ax_angular = fig.add_subplot(gs[0, 2])
-ax_linear = fig.add_subplot(gs[1, 2], sharex=ax_angular)
-ax_clearance = fig.add_subplot(gs[2, 2], sharex=ax_angular)
+ax_angular = fig.add_subplot(gs[0, 1])
+ax_linear = fig.add_subplot(gs[1, 1], sharex=ax_angular)
+ax_clearance = fig.add_subplot(gs[2, 1], sharex=ax_angular)
 for name, T, clearance_profile, style in [
     ("Keyframes + ScLERP", T_baseline, clearance_baseline, dict(c="gray", ls="--")),
     ("Optimized", T_optimized, clearance_optimized, dict(c="k")),
@@ -603,20 +681,17 @@ ax_clearance.axhspan(clearance_baseline.min() - 5.0, 0.0, color="tab:red", alpha
 ax_clearance.axhline(safety_margin, c="tab:red", ls=":", lw=1)
 for ax_profile in (ax_angular, ax_linear, ax_clearance):
     ax_profile.grid(alpha=0.3)
-ax_angular.set_title("Profiles")
-ax_angular.set_ylabel("Angular speed [rad/s]")
-ax_angular.legend(loc="upper left")
-ax_linear.set_ylabel("Linear speed [units/s]")
-ax_clearance.set_ylabel("Clearance [units]")
+ax_angular.set_title("Angular speed [rad/s]")
+ax_angular.legend(loc="upper left", fontsize="small")
+ax_linear.set_title("Linear speed [units/s]")
+ax_clearance.set_title("Clearance [units] (dotted: safety margin)")
 ax_clearance.set_xlabel("Time [s]")
-ax_clearance.set_title("Clearance (dotted: safety margin)")
 
-ax_cost = fig.add_subplot(gs[3, 2])
+ax_cost = fig.add_subplot(gs[3, 1])
 ax_cost.semilogy(costs, c="k")
-ax_cost.set_title("Levenberg-Marquardt")
+ax_cost.set_title("Cost (Levenberg-Marquardt)")
 ax_cost.set_xlabel("Accepted step")
-ax_cost.set_ylabel("Cost")
 ax_cost.grid(alpha=0.3)
 
-fig.subplots_adjust(left=0.04, right=0.98, top=0.96, bottom=0.05)
+fig.subplots_adjust(left=0.06, right=0.98, top=0.95, bottom=0.07)
 plt.show()
