@@ -22,7 +22,7 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-import pytransform3d.plot_utils as ppu
+import plotly.graph_objects as go
 import pytransform3d.transformations as pt
 from pytransform3d.urdf import UrdfTransformManager
 
@@ -517,78 +517,234 @@ print(f"Manipulability: min {w_reachable.min():.4f}, max {w_reachable.max():.4f}
 # %%
 # Plotting
 # --------
-# The 3D plot shows all reachable targets colored by manipulability together
-# with the robot in its home configuration. We only show targets with
-# :math:`y \leq 0` to reveal the inside of the workspace. The heatmap shows a vertical
-# slice through the base (:math:`y = 0`). White cells are not reachable with
-# the tool pointing downwards. The last plot shows how many targets are
-# solved after each iteration of the solver.
+# The interactive 3D view shows the reachable region with the tool pointing
+# downwards as a translucent hull. Move the sliders to cut through it with
+# vertical or horizontal slices that are colored by manipulability. Cells
+# without color are not reachable. The robot is shown in the solution with
+# the highest manipulability in the vertical slice through the base. Note that
+# we ignore self-collisions and collisions with the environment, so the
+# workspace extends below the mounting plane of the robot.
 #
-# The workspace is roughly a sphere around the base. Manipulability is low
-# close to the vertical axis through the base, in particular above and below
-# the base, and it is highest at the sides of the workspace. A few isolated
-# unreachable cells inside the workspace are failures of the local IK solver,
-# which could be fixed with more restarts. Note that we ignore self-collisions and
-# collisions with the environment.
-fig = plt.figure(figsize=(17, 5.5))
-vmin, vmax = 0.0, w_reachable.max()
-cmap = "viridis"
-
-ax = ppu.make_3d_axis(ax_s=1.0, pos=131, unit="m", n_ticks=5)
-cutaway = reachable & (grid[:, 1] <= 0.0)
-points = grid[cutaway]
-sc = ax.scatter(
-    points[:, 0],
-    points[:, 1],
-    points[:, 2],
-    c=w[cutaway],
-    cmap=cmap,
-    vmin=vmin,
-    vmax=vmax,
-    s=2,
-    alpha=0.5,
-)
-for joint_name in joint_names:
-    tm.set_joint(joint_name, 0.0)
-tm.plot_visuals("robot_arm", ax=ax, wireframe=False, alpha=1.0)
-tm.plot_frames_in(
-    "linkmount", ax=ax, s=0.15, whitelist=["linkmount", "tcp"], show_name=False
-)
-ax.set_xlim((-0.9, 0.9))
-ax.set_ylim((-0.9, 0.9))
-ax.set_zlim((-0.9, 1.1))
-ax.view_init(elev=20, azim=-60)
-ax.set_title("Reachable targets with $y \\leq 0$")
-fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.1, label="Manipulability $w$")
-
-ax = fig.add_subplot(132)
+# The workspace is roughly a sphere around the second joint. Manipulability is
+# low close to the vertical axis through the base and highest at the sides of
+# the workspace. A few isolated unreachable cells inside the workspace are
+# failures of the local IK solver, which could be fixed with more restarts.
+W = np.where(reachable, w, np.nan).reshape(n_x, n_y, n_z)
+G = grid.reshape(n_x, n_y, n_z, 3)
 slice_index = n_y // 2
-w_grid = np.where(reachable, w, np.nan).reshape(n_x, n_y, n_z)
+best = np.unravel_index(np.nanargmax(W[:, slice_index]), (n_x, n_z))
+robot_thetas = np.asarray(thetas).reshape(n_x, n_y, n_z, -1)[
+    best[0], slice_index, best[1]
+]
+for joint_name, theta in zip(joint_names, robot_thetas, strict=True):
+    tm.set_joint(joint_name, theta)
+
+
+def cylinder_mesh(radius, length, A2B, n_segments=24):
+    """Vertices and faces of a cylinder along the z-axis of frame A."""
+    angles = np.linspace(0.0, 2.0 * np.pi, n_segments, endpoint=False)
+    circle = radius * np.c_[np.cos(angles), np.sin(angles)]
+    vertices = np.vstack(
+        (
+            np.c_[circle, np.full(n_segments, -0.5 * length)],
+            np.c_[circle, np.full(n_segments, 0.5 * length)],
+            [[0.0, 0.0, -0.5 * length], [0.0, 0.0, 0.5 * length]],
+        )
+    )
+    i = np.arange(n_segments)
+    j = (i + 1) % n_segments
+    bottom = np.full(n_segments, 2 * n_segments)
+    faces = np.vstack(
+        (
+            np.c_[i, j, n_segments + i],
+            np.c_[j, n_segments + j, n_segments + i],
+            np.c_[bottom, j, i],
+            np.c_[bottom + 1, n_segments + i, n_segments + j],
+        )
+    )
+    return vertices @ A2B[:3, :3].T + A2B[:3, 3], faces
+
+
+def slice_mesh(centers, normal_axis, half_size):
+    """Squares around cell centers, perpendicular to an axis."""
+    in_plane = [axis for axis in range(3) if axis != normal_axis]
+    corners = half_size * np.array([[-1, -1], [1, -1], [1, 1], [-1, 1]])
+    vertices = np.repeat(centers, 4, axis=0)
+    vertices[:, in_plane] += np.tile(corners, (len(centers), 1))
+    first = 4 * np.arange(len(centers))
+    faces = np.vstack(
+        (np.c_[first, first + 1, first + 2], np.c_[first, first + 2, first + 3])
+    )
+    return vertices, faces
+
+
+# Single precision keeps the size of the interactive figure small.
+G32 = G.astype(np.float32)
+fig = go.Figure()
+fig.add_trace(
+    go.Surface(
+        x=[[-0.9, 0.9], [-0.9, 0.9]],
+        y=[[-0.9, -0.9], [0.9, 0.9]],
+        z=np.zeros((2, 2)),
+        colorscale=[[0.0, "tan"], [1.0, "tan"]],
+        opacity=0.25,
+        showscale=False,
+        hoverinfo="skip",
+        name="Mounting plane",
+        showlegend=True,
+    )
+)
+fig.add_trace(
+    go.Isosurface(
+        x=G32[..., 0].ravel(),
+        y=G32[..., 1].ravel(),
+        z=G32[..., 2].ravel(),
+        value=reachable.astype(np.float32),
+        isomin=0.5,
+        isomax=1.0,
+        surface_count=1,
+        opacity=0.08,
+        colorscale=[[0.0, "gray"], [1.0, "gray"]],
+        showscale=False,
+        caps=dict(x_show=False, y_show=False, z_show=False),
+        hoverinfo="skip",
+        name="Reachable region",
+        showlegend=True,
+    )
+)
+for k, visual in enumerate(tm.visuals):
+    vertices, faces = cylinder_mesh(
+        visual.radius, visual.length, tm.get_transform(visual.frame, "linkmount")
+    )
+    fig.add_trace(
+        go.Mesh3d(
+            x=vertices[:, 0],
+            y=vertices[:, 1],
+            z=vertices[:, 2],
+            i=faces[:, 0],
+            j=faces[:, 1],
+            k=faces[:, 2],
+            color="rgb(70, 70, 90)",
+            flatshading=True,
+            hoverinfo="skip",
+            name="Robot",
+            legendgroup="robot",
+            showlegend=k == 0,
+        )
+    )
+
+# one trace per slice, the sliders switch their visibility
+n_static_traces = len(fig.data)
+half_size = 0.5 * (xs[1] - xs[0])
+for normal_axis, n_slices in [(1, n_y), (2, n_z)]:
+    for index in range(n_slices):
+        centers = np.take(G, index, axis=normal_axis).reshape(-1, 3)
+        values = np.take(W, index, axis=normal_axis).ravel()
+        in_workspace = ~np.isnan(values)
+        vertices, faces = slice_mesh(centers[in_workspace], normal_axis, half_size)
+        vertices, faces = vertices.astype(np.float32), faces.astype(np.int32)
+        visible = normal_axis == 1 and index == slice_index
+        fig.add_trace(
+            go.Mesh3d(
+                x=vertices[:, 0],
+                y=vertices[:, 1],
+                z=vertices[:, 2],
+                i=faces[:, 0],
+                j=faces[:, 1],
+                k=faces[:, 2],
+                intensity=np.tile(values[in_workspace], 2).astype(np.float32),
+                intensitymode="cell",
+                colorscale="Viridis",
+                cmin=0.0,
+                cmax=w_reachable.max(),
+                showscale=visible,
+                colorbar=dict(title="Manipulability w", len=0.6),
+                lighting=dict(ambient=1.0, diffuse=0.0, specular=0.0),
+                hovertemplate="w = %{intensity:.3f}<extra></extra>",
+                visible=visible,
+                name="Slice",
+            )
+        )
+
+
+def slice_slider(label, positions, first_trace, active, y):
+    traces = list(range(first_trace, first_trace + len(positions)))
+    steps = [
+        dict(
+            method="restyle",
+            label="off",
+            args=[{"visible": [False] * len(positions)}, traces],
+        )
+    ] + [
+        dict(
+            method="restyle",
+            label=f"{position:.2f}",
+            args=[{"visible": [i == k for i in range(len(positions))]}, traces],
+        )
+        for k, position in enumerate(positions)
+    ]
+    return dict(
+        active=active,
+        steps=steps,
+        currentvalue=dict(prefix=label),
+        x=0.05,
+        len=0.9,
+        y=y,
+        pad=dict(t=0),
+    )
+
+
+fig.update_layout(
+    title=(
+        f"Workspace with tool pointing downwards: {reachable.sum()} of "
+        f"{len(reachable)} targets reachable"
+    ),
+    sliders=[
+        slice_slider("Vertical slice y = ", ys, n_static_traces, slice_index + 1, 0.12),
+        slice_slider("Horizontal slice z = ", zs, n_static_traces + n_y, 0, 0.0),
+    ],
+    scene=dict(
+        aspectmode="data",
+        xaxis_title="x [m]",
+        yaxis_title="y [m]",
+        zaxis_title="z [m]",
+        camera=dict(eye=dict(x=1.4, y=-1.4, z=0.8)),
+    ),
+    legend=dict(x=0.01, y=0.95),
+    margin=dict(l=0, r=0, t=40, b=60),
+    height=800,
+)
+fig.show()
+
+# %%
+# The heatmap shows the vertical slice through the base (:math:`y = 0`).
+# White cells are not reachable with the tool pointing downwards. The second
+# plot shows how many targets are solved after each iteration of the solver.
+fig, (ax_slice, ax_convergence) = plt.subplots(
+    1, 2, figsize=(12, 5), width_ratios=(1.2, 1.0), layout="constrained"
+)
 dx, dz = xs[1] - xs[0], zs[1] - zs[0]
-im = ax.imshow(
-    w_grid[:, slice_index].T,
+im = ax_slice.imshow(
+    W[:, slice_index].T,
     origin="lower",
     extent=(xs[0] - dx / 2, xs[-1] + dx / 2, zs[0] - dz / 2, zs[-1] + dz / 2),
-    cmap=cmap,
-    vmin=vmin,
-    vmax=vmax,
+    cmap="viridis",
+    vmin=0.0,
+    vmax=w_reachable.max(),
 )
-ax.plot([0.0], [0.0], marker="^", color="k", markersize=10, label="Robot base")
-ax.set_aspect("equal")
-ax.set_xlabel("x [m]")
-ax.set_ylabel("z [m]")
-ax.set_title(f"Slice y = {ys[slice_index]:.1f} m")
-ax.legend(loc="upper left")
-fig.colorbar(im, ax=ax, shrink=0.8, label="Manipulability $w$")
+ax_slice.plot([0.0], [0.0], marker="^", color="k", markersize=10, label="Robot base")
+ax_slice.set_aspect("equal")
+ax_slice.set_xlabel("x [m]")
+ax_slice.set_ylabel("z [m]")
+ax_slice.set_title(f"Slice y = {ys[slice_index]:.1f} m")
+ax_slice.legend(loc="upper left")
+fig.colorbar(im, ax=ax_slice, shrink=0.8, label="Manipulability $w$")
 
-ax = fig.add_subplot(133)
-ax.plot(np.arange(1, n_iter + 1), 100 * np.asarray(success_rate), lw=2)
-ax.set_xlabel("Iteration")
-ax.set_ylabel("Targets solved [%]")
-ax.set_title("Convergence of batched IK")
-ax.set_xlim((1, n_iter))
-ax.set_ylim(bottom=0)
-ax.grid(alpha=0.3)
-
-plt.tight_layout()
+ax_convergence.plot(np.arange(1, n_iter + 1), 100 * np.asarray(success_rate), lw=2)
+ax_convergence.set_xlabel("Iteration")
+ax_convergence.set_ylabel("Targets solved [%]")
+ax_convergence.set_title("Convergence of batched IK")
+ax_convergence.set_xlim((1, n_iter))
+ax_convergence.set_ylim(bottom=0)
+ax_convergence.grid(alpha=0.3)
 plt.show()
