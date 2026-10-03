@@ -151,7 +151,7 @@ def initialize_particles(key):
     )
     R = jr.matrix_from_compact_axis_angle(axis_angles)
     particles = jt.create_transform(R, positions)
-    log_weights = jnp.full(n_particles, -jnp.log(n_particles))
+    log_weights = jnp.full(n_particles, -np.log(n_particles), dtype=particles.dtype)
     return particles, log_weights
 
 
@@ -230,28 +230,136 @@ def filter_steps(particles, log_weights, key, twists, ranges, anchor_masks):
 # %%
 # Visualization
 # -------------
-# We display a random subset of the particles, the true pose of the drone, the
-# estimated pose, and the anchors with the measured distances.
+# We display a random subset of the particles. Their color shows their heading,
+# so we can see that the heading is unknown in the beginning. The drone model
+# shows the true pose and the coordinate frame the estimated pose. The
+# wireframe shows the positions in the room that agree with the last measured
+# distance to the highlighted anchor.
 n_displayed_particles = 100_000
 
 
-class PointCloud(pv.Artist):
-    """Point cloud that can be updated in an animation."""
+def colors_from_headings(R):
+    """Map heading (yaw angle) to a color on the hue circle."""
+    hue = (np.arctan2(R[:, 1, 0], R[:, 0, 0]) / (2.0 * np.pi)) % 1.0
+    channels = np.abs(
+        (6.0 * hue[:, np.newaxis] + np.array([0.0, 4.0, 2.0])) % 6.0 - 3.0
+    )
+    return np.clip(channels - 1.0, 0.0, 1.0)
 
-    def __init__(self, points, color):
-        self.pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
-        self.pcd.paint_uniform_color(color)
 
-    def set_data(self, points):
-        self.pcd.points = o3d.utility.Vector3dVector(points)
+class Particles(pv.Artist):
+    """Particle positions colored by heading."""
+
+    def __init__(self):
+        self.pcd = o3d.geometry.PointCloud()
+
+    def set_data(self, poses):
+        self.pcd.points = o3d.utility.Vector3dVector(poses[:, :3, 3])
+        self.pcd.colors = o3d.utility.Vector3dVector(
+            colors_from_headings(poses[:, :3, :3])
+        )
 
     @property
     def geometries(self):
         return [self.pcd]
 
 
+class RangeSphere(pv.Artist):
+    """Positions in the room with a given distance to an anchor."""
+
+    def __init__(self):
+        sphere = o3d.geometry.TriangleMesh.create_sphere(radius=1.0, resolution=40)
+        lines = o3d.geometry.LineSet.create_from_triangle_mesh(sphere)
+        self.unit_sphere = np.asarray(sphere.vertices)
+        self.all_lines = np.asarray(lines.lines)
+        self.lines = o3d.geometry.LineSet()
+
+    def set_data(self, center, radius):
+        points = center + radius * self.unit_sphere
+        inside = np.all(
+            (points >= np.asarray(room_min)) & (points <= np.asarray(room_max)),
+            axis=1,
+        )
+        lines = self.all_lines[np.all(inside[self.all_lines], axis=1)]
+        self.lines.points = o3d.utility.Vector3dVector(points)
+        self.lines.lines = o3d.utility.Vector2iVector(lines)
+        self.lines.paint_uniform_color((0.2, 0.4, 0.9))
+
+    @property
+    def geometries(self):
+        return [self.lines]
+
+
+class Drone(pv.Artist):
+    """Simple model of a quadrotor."""
+
+    def __init__(self, arm_length=0.35):
+        self.mesh = o3d.geometry.TriangleMesh()
+        for angle in np.deg2rad([45.0, 135.0]):
+            arm = o3d.geometry.TriangleMesh.create_box(2.0 * arm_length, 0.03, 0.02)
+            arm.translate((-arm_length, -0.015, -0.01))
+            arm.rotate(o3d.geometry.get_rotation_matrix_from_xyz((0, 0, angle)))
+            self.mesh += arm
+        for angle in np.deg2rad([45.0, 135.0, 225.0, 315.0]):
+            rotor = o3d.geometry.TriangleMesh.create_cylinder(
+                radius=0.1, height=0.02, resolution=24
+            )
+            rotor.translate(
+                (arm_length * np.cos(angle), arm_length * np.sin(angle), 0.02)
+            )
+            self.mesh += rotor
+        body = o3d.geometry.TriangleMesh.create_box(0.12, 0.08, 0.05)
+        self.mesh += body.translate((-0.06, -0.04, -0.025))
+        self.mesh.compute_vertex_normals()
+        self.mesh.paint_uniform_color((0.25, 0.25, 0.25))
+        self.vertices = np.asarray(self.mesh.vertices).copy()
+
+    def set_data(self, T):
+        vertices = self.vertices @ T[:3, :3].T + T[:3, 3]
+        self.mesh.vertices = o3d.utility.Vector3dVector(vertices)
+        self.mesh.compute_vertex_normals()
+
+    @property
+    def geometries(self):
+        return [self.mesh]
+
+
+class Anchors(pv.Artist):
+    """UWB anchors, the measured one is highlighted."""
+
+    def __init__(self, positions):
+        self.spheres = []
+        for position in positions:
+            sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
+            sphere.translate(position)
+            sphere.compute_vertex_normals()
+            self.spheres.append(sphere)
+        self.set_data(None)
+
+    def set_data(self, active):
+        for i, sphere in enumerate(self.spheres):
+            color = (0.2, 0.4, 0.9) if i == active else (0.6, 0.6, 0.6)
+            sphere.paint_uniform_color(color)
+
+    @property
+    def geometries(self):
+        return self.spheres
+
+
+def room_geometries():
+    floor = o3d.geometry.TriangleMesh.create_box(*np.asarray(room_max[:2]), 0.01)
+    floor.translate((0.0, 0.0, -0.01))
+    floor.paint_uniform_color((0.85, 0.85, 0.85))
+    floor.compute_vertex_normals()
+    walls = o3d.geometry.LineSet.create_from_axis_aligned_bounding_box(
+        o3d.geometry.AxisAlignedBoundingBox(np.asarray(room_min), np.asarray(room_max))
+    )
+    walls.paint_uniform_color((0.4, 0.4, 0.4))
+    return [floor, walls]
+
+
 def animation_callback(
-    frame, particle_cloud, true_frame, estimate_frame, range_lines, trajectory
+    frame, particle_artist, drone, estimate, anchor_artist, range_sphere, trajectory
 ):
     global particles, log_weights, filter_key
 
@@ -269,24 +377,29 @@ def animation_callback(
         measured_ranges[steps],
         measured_anchor[steps],
     )
-    positions = np.asarray(particles[displayed, :3, 3])
+    displayed_particles = np.asarray(particles[displayed])
     duration = time.perf_counter() - start
-    if frame % 25 == 0:
+    if frame % 50 == 0:
         print(
             f"t = {frame * steps_per_frame * dt:4.1f} s: {steps_per_frame} steps "
             f"with {n_particles} particles in {1000 * duration:.1f} ms"
         )
 
-    T_true = np.asarray(true_poses[steps.stop - 1])
-    particle_cloud.set_data(positions)
-    true_frame.set_data(T_true)
-    estimate_frame.set_data(np.asarray(T_mean))
-    range_lines.set_data(
-        np.vstack([np.vstack((a, T_true[:3, 3])) for a in np.asarray(anchors)]),
-        c=(0.6, 0.6, 1.0),
-    )
-    trajectory.set_data(np.asarray(true_poses[: steps.stop, :3, 3]), c=(0, 0, 0))
-    return particle_cloud, true_frame, estimate_frame, range_lines, trajectory
+    step = steps.stop - 1
+    particle_artist.set_data(displayed_particles)
+    drone.set_data(np.asarray(true_poses[step]))
+    estimate.set_data(np.asarray(T_mean))
+    last_measurement = step - (step + 1) % measurement_every
+    if last_measurement >= 0:
+        active = int(jnp.argmax(measured_anchor[last_measurement]))
+        anchor_artist.set_data(active)
+        range_sphere.set_data(
+            np.asarray(anchors[active]),
+            float(measured_ranges[last_measurement, active]),
+        )
+    recent = np.asarray(true_poses[max(0, step - int(10.0 / dt)) : step + 1, :3, 3])
+    trajectory.set_data(recent, c=(0.0, 0.0, 0.0))
+    return particle_artist, drone, estimate, anchor_artist, range_sphere, trajectory
 
 
 filter_key = jax.random.PRNGKey(42)
@@ -296,33 +409,28 @@ displayed = jax.random.choice(
 particles, log_weights = initialize_particles(filter_key)
 
 fig = pv.figure()
-room = o3d.geometry.LineSet.create_from_axis_aligned_bounding_box(
-    o3d.geometry.AxisAlignedBoundingBox(np.asarray(room_min), np.asarray(room_max))
-)
-room.paint_uniform_color((0.3, 0.3, 0.3))
-fig.add_geometry(room)
-for anchor in np.asarray(anchors):
-    sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.08)
-    sphere.translate(anchor)
-    sphere.paint_uniform_color((0.1, 0.1, 0.8))
-    sphere.compute_vertex_normals()
-    fig.add_geometry(sphere)
-particle_cloud = PointCloud(np.asarray(particles[displayed, :3, 3]), (1.0, 0.5, 0.0))
-particle_cloud.add_artist(fig)
-true_frame = fig.plot_transform(np.asarray(T_start), s=0.5, strict_check=False)
-estimate_frame = fig.plot_transform(np.eye(4), s=0.8, strict_check=False)
-range_lines = pv.Line3D(np.zeros((2 * len(anchors), 3)), c=(0.6, 0.6, 1.0))
-range_lines.add_artist(fig)
-trajectory = pv.Line3D(np.zeros((2, 3)), c=(0, 0, 0))
-trajectory.add_artist(fig)
+for geometry in room_geometries():
+    fig.add_geometry(geometry)
+particle_artist = Particles()
+particle_artist.set_data(np.asarray(particles[displayed]))
+drone = Drone()
+drone.set_data(np.asarray(T_start))
+estimate = pv.Frame(np.eye(4), s=0.5)
+anchor_artist = Anchors(np.asarray(anchors))
+range_sphere = RangeSphere()
+range_sphere.set_data(np.zeros(3), 0.0)
+trajectory = pv.Line3D(np.asarray(true_poses[:2, :3, 3]), c=(0.0, 0.0, 0.0))
+artists = (particle_artist, drone, estimate, anchor_artist, range_sphere, trajectory)
+for artist in artists:
+    artist.add_artist(fig)
+fig.visualizer.get_render_option().point_size = 2.0
 fig.view_init(elev=35, azim=-60)
 
 n_frames = n_steps // steps_per_frame
-fargs = (particle_cloud, true_frame, estimate_frame, range_lines, trajectory)
 if "__file__" in globals():
-    fig.animate(animation_callback, n_frames, loop=True, fargs=fargs)
+    fig.animate(animation_callback, n_frames, loop=True, fargs=artists)
     fig.show()
 else:
     for frame in range(150):
-        animation_callback(frame, *fargs)
+        animation_callback(frame, *artists)
     fig.save_image("__open3d_rendered_image.jpg")
