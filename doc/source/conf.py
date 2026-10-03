@@ -3,6 +3,8 @@ import os
 import time
 import doctest
 
+from plotly.io._sg_scraper import plotly_sg_scraper
+
 sys.path.insert(0, os.path.abspath("../../src"))
 
 library_name = "jaxtransform3d"
@@ -65,7 +67,7 @@ sphinx_gallery_conf = {
     "gallery_dirs": "_auto_examples",
     "reference_url": {library_name: None},
     "filename_pattern": "/plot_",
-    "image_scrapers": ("matplotlib"),
+    "image_scrapers": ("matplotlib", plotly_sg_scraper),
     "backreferences_dir": "_auto_examples/backreferences",
     "doc_module": library_name,
 }

@@ -28,6 +28,8 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
+from scipy.spatial import ConvexHull
 
 import jaxtransform3d.rotations as jr
 import jaxtransform3d.transformations as jt
@@ -255,52 +257,165 @@ for iteration in range(1, 21):
         break
 
 # %%
-# Results
-# -------
-# The garage has four parking decks. In the initial guess, the trajectory
-# drifts, so the decks appear as wide bands in the side view. After the
-# optimization, the decks are planar and parallel. The 3D plots only show the
-# section of the trajectory in the garage with exaggerated height.
+# Parking Decks
+# -------------
+# The dataset does not contain a map of the garage, but the robot drives on
+# its decks. Hence, we can estimate the decks from the optimized trajectory:
+# we remove the common slope of the garage, separate the four decks at gaps
+# in the remaining heights, and fit a plane to the positions on each deck. The
+# footprint of the decks is the convex hull of all positions in the garage.
 P_init = np.asarray(poses_init[:, :3, 3])
 P_opt = np.asarray(poses[:, :3, 3])
 
-fig = plt.figure(figsize=(14, 10))
-gs = fig.add_gridspec(
-    2, 3, height_ratios=(1.5, 1.0), width_ratios=(1.0, 1.0, 1.0), hspace=0.25
+in_garage = (P_opt[:, 0] > -140.0) & (P_opt[:, 0] < -10.0) & (P_opt[:, 1] > 130.0)
+P_garage = P_opt[in_garage]
+A = np.c_[P_garage[:, :2], np.ones(len(P_garage))]
+heights = P_garage[:, 2] - A @ np.linalg.lstsq(A, P_garage[:, 2], rcond=None)[0]
+deck_indices = np.digitize(heights, [-3.4, -0.5, 2.7])
+footprint = P_garage[ConvexHull(P_garage[:, :2]).vertices, :2]
+footprint = footprint.mean(axis=0) + 1.06 * (footprint - footprint.mean(axis=0))
+decks = []
+for deck in range(4):
+    on_deck = deck_indices == deck
+    plane = np.linalg.lstsq(A[on_deck], P_garage[on_deck, 2], rcond=None)[0]
+    deck_heights = np.c_[footprint, np.ones(len(footprint))] @ plane - 0.15
+    decks.append(np.c_[footprint, deck_heights])
+
+# %%
+# Results
+# -------
+# In the interactive 3D view, you can switch between the initial guess and the
+# optimized trajectory. The color of the trajectory shows the time (pose index)
+# from purple to yellow. Loop closures (red) connect poses at the same place.
+# In the initial guess, the trajectory drifts through the decks and loop
+# closures connect poses that are far apart. After the optimization, each lap
+# lies on its deck. The height is exaggerated.
+fig = go.Figure()
+for k, deck in enumerate(decks):
+    n_corners = len(deck)
+    fig.add_trace(
+        go.Mesh3d(
+            x=deck[:, 0],
+            y=deck[:, 1],
+            z=deck[:, 2],
+            i=[0] * (n_corners - 2),
+            j=list(range(1, n_corners - 1)),
+            k=list(range(2, n_corners)),
+            color="lightgray",
+            opacity=0.35,
+            hoverinfo="skip",
+            name="Parking decks (estimated)",
+            showlegend=k == 0,
+        )
+    )
+    outline = np.vstack((deck, deck[:1]))
+    fig.add_trace(
+        go.Scatter3d(
+            x=outline[:, 0],
+            y=outline[:, 1],
+            z=outline[:, 2],
+            mode="lines",
+            line=dict(color="gray", width=2),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+
+loop_closures = np.asarray(edges[~odometry])
+for name, P, visible in [("initial guess", P_init, False), ("optimized", P_opt, True)]:
+    segments = np.full((3 * len(loop_closures), 3), np.nan)  # NaN separates lines
+    segments[0::3] = P[loop_closures[:, 0]]
+    segments[1::3] = P[loop_closures[:, 1]]
+    fig.add_trace(
+        go.Scatter3d(
+            x=segments[:, 0],
+            y=segments[:, 1],
+            z=segments[:, 2],
+            mode="lines",
+            line=dict(color="rgba(220, 50, 32, 0.35)", width=1),
+            hoverinfo="skip",
+            name=f"Loop closures ({name})",
+            visible=visible,
+        )
+    )
+    fig.add_trace(
+        go.Scatter3d(
+            x=P[:, 0],
+            y=P[:, 1],
+            z=P[:, 2],
+            mode="lines",
+            line=dict(
+                color=np.arange(n_poses),
+                colorscale="Viridis",
+                width=5,
+                colorbar=dict(title="Pose index<br>(time)", len=0.6),
+            ),
+            text=np.arange(n_poses),
+            hovertemplate="pose %{text}<extra></extra>",
+            name=f"Trajectory ({name}), colored by time",
+            visible=visible,
+        )
+    )
+
+
+def visible_traces(show_optimized):
+    deck_traces = [True] * (2 * len(decks))
+    initial_traces = [not show_optimized] * 2
+    optimized_traces = [show_optimized] * 2
+    return deck_traces + initial_traces + optimized_traces
+
+
+buttons = [
+    dict(
+        label=label,
+        method="update",
+        args=[{"visible": visible_traces(show_optimized)}],
+    )
+    for label, show_optimized in [("Initial guess", False), ("Optimized", True)]
+]
+fig.update_layout(
+    title=f"Parking garage dataset: {n_poses} poses, {len(edges)} edges",
+    updatemenus=[
+        dict(
+            type="buttons", direction="right", x=0.02, y=0.98, active=1, buttons=buttons
+        )
+    ],
+    legend=dict(x=0.02, y=0.88),
+    scene=dict(
+        aspectmode="manual",
+        aspectratio=dict(x=1.0, y=0.95, z=0.35),
+        camera=dict(
+            eye=dict(x=-0.75, y=-0.95, z=0.45), center=dict(x=-0.15, y=0.25, z=-0.05)
+        ),
+        xaxis_title="x [m]",
+        yaxis_title="y [m]",
+        zaxis_title="z [m]",
+    ),
+    margin=dict(l=0, r=0, t=40, b=0),
+    height=650,
 )
-garage = P_opt[:, 1] > 120.0  # the section with the parking decks
-for k, (P, title, color) in enumerate(
-    [(P_init, "Initial guess", "tab:red"), (P_opt, "Optimized", "tab:blue")]
-):
-    ax = fig.add_subplot(gs[0, k], projection="3d")
-    P_garage = np.where(garage[:, np.newaxis], P, np.nan)
-    ax.plot(*P_garage.T, lw=0.7, c=color)
-    ax.set_box_aspect((1.0, 1.3, 0.8), zoom=1.15)  # height exaggerated
-    ax.set_zlim(-7.0, 8.0)
-    ax.set_zticks([-5, 0, 5])
-    ax.view_init(elev=12, azim=-110)
-    ax.set_xlabel("x [m]")
-    ax.set_ylabel("y [m]")
-    ax.set_zlabel("z [m]")
-    ax.set_title(title)
+fig.show()
 
-ax = fig.add_subplot(gs[0, 2])
-ax.semilogy(costs, marker="o", c="k")
-ax.set_xticks(range(len(costs)))
-ax.set_xlabel("Accepted iteration")
-ax.set_ylabel("Cost $E$")
-ax.set_title("Convergence")
-ax.grid(alpha=0.3, which="both")
+# %%
+# In the side view, the decks of the initial guess appear as wide bands. After
+# the optimization, they are planar and parallel. The optimization converges
+# in a few iterations.
+fig, (ax_side, ax_cost) = plt.subplots(
+    1, 2, figsize=(14, 4.5), width_ratios=(3, 1), layout="constrained"
+)
+ax_side.plot(P_init[:, 1], P_init[:, 2], lw=0.7, c="tab:red", label="Initial guess")
+ax_side.plot(P_opt[:, 1], P_opt[:, 2], lw=0.7, c="tab:blue", label="Optimized")
+ax_side.set_xlim(120.0, 260.0)
+ax_side.set_xlabel("y [m]")
+ax_side.set_ylabel("z [m]")
+ax_side.set_title("Side view of the parking decks")
+ax_side.legend(loc="upper right")
+ax_side.grid(alpha=0.3)
 
-ax = fig.add_subplot(gs[1, :])
-ax.plot(P_init[:, 1], P_init[:, 2], lw=0.7, c="tab:red", label="Initial guess")
-ax.plot(P_opt[:, 1], P_opt[:, 2], lw=0.7, c="tab:blue", label="Optimized")
-ax.set_xlim(120.0, 260.0)
-ax.set_xlabel("y [m]")
-ax.set_ylabel("z [m]")
-ax.set_title("Side view of the parking decks")
-ax.legend(loc="upper right")
-ax.grid(alpha=0.3)
-fig.suptitle("Parking garage: pose graph optimization", fontsize=14)
-fig.subplots_adjust(left=0.06, right=0.97, top=0.92, bottom=0.06)
+ax_cost.semilogy(costs, marker="o", c="k")
+ax_cost.set_xticks(range(len(costs)))
+ax_cost.set_xlabel("Accepted iteration")
+ax_cost.set_ylabel("Cost $E$")
+ax_cost.set_title("Convergence")
+ax_cost.grid(alpha=0.3, which="both")
 plt.show()
