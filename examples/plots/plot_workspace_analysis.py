@@ -4,7 +4,7 @@ Workspace Analysis with Batched Inverse Kinematics
 =====================================================
 
 Which poses can a robot arm reach, and how well can it move there? We answer
-this question numerically: we sample tens of thousands of target poses on a
+this question numerically: we sample half a million target poses on a
 3D grid, solve the inverse kinematics (IK) for all of them at once, and
 compute the manipulability of each solution.
 
@@ -448,7 +448,7 @@ print(f"Max. deviation from autodiff: {jnp.max(jnp.abs(J - J_autodiff)):.1e}")
 # z-axis of the base, which is a rotation by :math:`\pi` about the x-axis.
 # The grid contains the vertical plane :math:`y = 0` through the base, which
 # we will look at in more detail later.
-n_x, n_y, n_z = 41, 41, 41
+n_x, n_y, n_z = 81, 81, 81
 xs = np.linspace(-0.8, 0.8, n_x)
 ys = np.linspace(-0.8, 0.8, n_y)
 zs = np.linspace(-0.9, 0.7, n_z)
@@ -578,8 +578,15 @@ def slice_mesh(centers, normal_axis, half_size):
     return vertices, faces
 
 
-# Single precision keeps the size of the interactive figure small.
-G32 = G.astype(np.float32)
+# The interactive figure would be very large with all grid points, so we only
+# use every second grid point in each direction and single precision.
+step = 2
+W_coarse = W[::step, ::step, ::step]
+G_coarse = G[::step, ::step, ::step]
+reachable_coarse = ~np.isnan(W_coarse)
+xs_coarse, ys_coarse, zs_coarse = xs[::step], ys[::step], zs[::step]
+slice_index_coarse = slice_index // step
+G32 = G_coarse.astype(np.float32)
 fig = go.Figure()
 fig.add_trace(
     go.Surface(
@@ -599,7 +606,7 @@ fig.add_trace(
         x=G32[..., 0].ravel(),
         y=G32[..., 1].ravel(),
         z=G32[..., 2].ravel(),
-        value=reachable.astype(np.float32),
+        value=reachable_coarse.astype(np.float32).ravel(),
         isomin=0.5,
         isomax=1.0,
         surface_count=1,
@@ -635,15 +642,15 @@ for k, visual in enumerate(tm.visuals):
 
 # one trace per slice, the sliders switch their visibility
 n_static_traces = len(fig.data)
-half_size = 0.5 * (xs[1] - xs[0])
-for normal_axis, n_slices in [(1, n_y), (2, n_z)]:
+half_size = 0.5 * (xs_coarse[1] - xs_coarse[0])
+for normal_axis, n_slices in [(1, len(ys_coarse)), (2, len(zs_coarse))]:
     for index in range(n_slices):
-        centers = np.take(G, index, axis=normal_axis).reshape(-1, 3)
-        values = np.take(W, index, axis=normal_axis).ravel()
+        centers = np.take(G_coarse, index, axis=normal_axis).reshape(-1, 3)
+        values = np.take(W_coarse, index, axis=normal_axis).ravel()
         in_workspace = ~np.isnan(values)
         vertices, faces = slice_mesh(centers[in_workspace], normal_axis, half_size)
         vertices, faces = vertices.astype(np.float32), faces.astype(np.int32)
-        visible = normal_axis == 1 and index == slice_index
+        visible = normal_axis == 1 and index == slice_index_coarse
         fig.add_trace(
             go.Mesh3d(
                 x=vertices[:, 0],
@@ -700,8 +707,20 @@ fig.update_layout(
         f"{len(reachable)} targets reachable"
     ),
     sliders=[
-        slice_slider("Vertical slice y = ", ys, n_static_traces, slice_index + 1, 0.12),
-        slice_slider("Horizontal slice z = ", zs, n_static_traces + n_y, 0, 0.0),
+        slice_slider(
+            "Vertical slice y = ",
+            ys_coarse,
+            n_static_traces,
+            slice_index_coarse + 1,
+            0.12,
+        ),
+        slice_slider(
+            "Horizontal slice z = ",
+            zs_coarse,
+            n_static_traces + len(ys_coarse),
+            0,
+            0.0,
+        ),
     ],
     scene=dict(
         aspectmode="data",
