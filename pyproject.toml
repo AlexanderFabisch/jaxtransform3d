@@ -33,11 +33,14 @@ doc = [
     "numpydoc",
     "numpy",
     "matplotlib",
+    "plotly",
+    "kaleido",
     "pytransform3d",
 ]
 examples = [
     "matplotlib",
     "numpy",
+    "plotly",
     "pytransform3d",
 ]
 tests = [
